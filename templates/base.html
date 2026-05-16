@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -31,7 +33,7 @@
             {{end}}
         </nav>
         <div class="sidebar-footer" style="padding-top: 20px; border-top: 1px solid var(--border);">
-            <p style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">&copy; 2026 Muhammad As'ad Muhibbin Akbar</p>
+            <p style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">&copy; 2026 Arina </p>
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">v1.0.0 Desktop Web</p>
         </div>
     </aside>
@@ -43,10 +45,17 @@
             </div>
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div style="text-align: right; border-right: 1px solid var(--border); padding-right: 20px;">
-                    <p style="font-size: 0.875rem; font-weight: 700; color: var(--text-main); line-height: 1;">{{.User.Name}}</p>
-                    <p style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">{{.User.Role}}</p>
+                    <p style="font-size: 0.875rem; font-weight: 700; color: var(--text-main); line-height: 1;">
+                        {{.User.Name}}</p>
+                    <p
+                        style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">
+                        {{.User.Role}}</p>
                 </div>
-                <a href="/logout" class="btn btn-sm btn-danger" style="background: transparent; color: #991b1b; border: 1px solid #fecaca;">Logout</a>
+                <a href="/logout" class="btn btn-sm"
+                    style="background: transparent; color: #991b1b; border: 1px solid #fecaca; text-decoration: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem;">Logout</a>
+                <a href="/shutdown" class="btn btn-sm" 
+                    onclick="return confirm('Apakah Anda yakin ingin mematikan aplikasi?')"
+                    style="background: #991b1b; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; text-decoration: none;">Keluar Aplikasi</a>
             </div>
         </header>
 
@@ -66,4 +75,5 @@
         });
     </script>
 </body>
+
 </html>

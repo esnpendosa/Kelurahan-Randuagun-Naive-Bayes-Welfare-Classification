@@ -1,64 +1,82 @@
-# Manual Penggunaan Aplikasi Klasifikasi Kesejahteraan Ekonomi Keluarga
-## Kelurahan Randuagung
+# 📘 Panduan Pengguna (Manual Book)
+## Aplikasi Klasifikasi Kesejahteraan Ekonomi Keluarga - Kelurahan Randuagung
 
-Aplikasi ini dirancang untuk membantu petugas Kelurahan Randuagung dalam menentukan tingkat kesejahteraan ekonomi keluarga menggunakan metode Naive Bayes berdasarkan 36 indikator ekonomi.
+Aplikasi ini adalah sistem berbasis Desktop yang menggunakan algoritma **Naive Bayes** untuk menentukan klasifikasi kesejahteraan warga berdasarkan 36 indikator ekonomi.
+
+---
+
+## 🚀 1. Cara Menjalankan Aplikasi
+Aplikasi ini sekarang tersedia dalam format desktop (.exe) yang portabel:
+
+1.  Buka folder aplikasi.
+2.  Cari file bernama **`Klasifikasi-Warga-Randuagung.exe`**.
+3.  Klik dua kali (Double Click) pada file tersebut.
+4.  **Browser Otomatis**: Tunggu beberapa detik, browser default Anda akan otomatis terbuka dan menampilkan halaman login.
+5.  **Menutup Aplikasi**: Untuk mematikan aplikasi, klik tombol merah **"Keluar Aplikasi"** di bagian kanan atas layar.
 
 ---
 
-## 1. Persyaratan Sistem
-- Windows 10/11
-- Microsoft Edge WebView2 Runtime (biasanya sudah terinstal)
-- Koneksi internet (hanya saat instalasi/update)
+## 🔐 2. Login & Hak Akses
+Gunakan akun yang telah didaftarkan untuk masuk:
+- **Username Default**: `admin`
+- **Password Default**: `admin123`
 
-## 2. Cara Menjalankan Aplikasi
-1. Buka terminal/CMD di folder aplikasi.
-2. Jalankan perintah: `go run main.go`.
-3. Buka browser dan akses: `http://localhost:8080`.
-4. Login menggunakan akun yang diberikan oleh Admin.
-
-## 3. Fitur Utama
-
-### A. Dashboard
-Menampilkan ringkasan data:
-- Total warga yang terdaftar.
-- Grafik distribusi kelas kesejahteraan (Kelas 1 - 6).
-- Akurasi model Naive Bayes saat ini.
-
-### B. Manajemen Data Warga
-- **Cari Warga**: Gunakan kolom pencarian berdasarkan NIK atau Nama.
-- **Tambah Warga**: Masukkan identitas dasar (NIK, No KK, Nama Kepala Keluarga, Alamat, RT/RW, Dusun).
-- **Edit/Hapus**: Klik ikon pada tabel warga untuk mengubah atau menghapus data.
-
-### C. Klasifikasi (Input 36 Indikator)
-Ini adalah fitur inti untuk menentukan kelas kesejahteraan:
-1. Pilih warga dari daftar atau klik tombol "Klasifikasi Baru".
-2. Isi 36 indikator ekonomi yang dibagi menjadi 5 bagian:
-   - **Kondisi Rumah**: Dinding, atap, lantai, air, dll.
-   - **Data Kepala Keluarga**: Pendidikan, pekerjaan, penghasilan.
-   - **Komposisi Keluarga**: Jumlah anggota, disabilitas, lansia.
-   - **Akses & Pengeluaran**: Akses kesehatan, nilai aset.
-   - **Kepemilikan Aset**: Motor, mobil, AC, dll.
-3. Klik "Hitung Klasifikasi".
-4. Hasil akan muncul berupa **Probabilitas** untuk setiap kelas dan **Kelas Akhir** yang direkomendasikan.
-
-### D. Training Model (Admin)
-Fitur ini digunakan untuk memperbarui kecerdasan aplikasi:
-1. Klik menu "Training Model".
-2. Klik tombol "Mulai Training".
-3. Aplikasi akan mempelajari data warga yang sudah memiliki label kelas tetap.
-4. Tinjau **Confusion Matrix** dan nilai **Accuracy, Precision, Recall, F1-Score** untuk memastikan model sudah akurat.
-
-### E. Laporan
-- Filter laporan berdasarkan tanggal, dusun, atau kelas kesejahteraan.
-- Klik tombol **Export Excel** atau **PDF** untuk mengunduh laporan resmi kelurahan.
-
-## 4. Kategori Kelas Kesejahteraan
-- **Kelas 1**: Sangat Miskin
-- **Kelas 2**: Miskin
-- **Kelas 3**: Hampir Miskin
-- **Kelas 4**: Rentan Miskin
-- **Kelas 5**: Pas-pasan
-- **Kelas 6**: Menengah ke Atas
+### Peran (Roles):
+- **Admin**: Akses penuh ke semua fitur (Manajemen Warga, Training Model, Manajemen User).
+- **Operator**: Hanya bisa melakukan klasifikasi baru, melihat dashboard, dan mengunduh laporan.
 
 ---
-*© 2026 Muhammad As'ad Muhibbin Akbar - Sistem Klasifikasi Naive Bayes*
+
+## ✨ 3. Fitur Utama
+
+### 📊 A. Dashboard
+Halaman utama yang menampilkan ringkasan data kelurahan:
+- **Statistik Cepat**: Total warga terdaftar dan total klasifikasi yang dilakukan.
+- **Grafik Distribusi**: Visualisasi jumlah warga berdasarkan kelas kesejahteraan (Kelas 1 - 6).
+- **Aktivitas Terakhir**: Log aktivitas sistem terbaru.
+
+### 👥 B. Manajemen Data Warga (Admin Only)
+Kelola database kependudukan sebelum dilakukan klasifikasi:
+- **Tambah Warga**: Masukkan NIK, No KK, Nama, dan Alamat.
+- **Import Excel**: Masukkan data warga secara massal menggunakan file Excel (.xlsx).
+- **Edit/Hapus**: Memperbarui identitas warga jika ada perubahan.
+
+### 🧠 C. Klasifikasi Baru
+Fitur inti untuk memprediksi tingkat kesejahteraan:
+1.  Pilih warga dari daftar dropdown.
+2.  Isi **36 Indikator** ekonomi (Kondisi Rumah, Ekonomi, Aset, dll).
+3.  Klik **"Proses Klasifikasi"**.
+4.  Sistem akan menghitung probabilitas menggunakan rumus Naive Bayes.
+
+### 📈 D. Visualisasi Hasil
+Setelah klasifikasi, sistem menampilkan:
+- **Kelas Terpilih**: Rekomendasi tingkat kesejahteraan (misal: "Miskin").
+- **Grafik Probabilitas**: Menampilkan persentase kemiripan warga dengan 6 kategori kelas yang ada.
+
+### 📋 E. Laporan & Export
+- **Riwayat**: Melihat semua hasil klasifikasi yang pernah dilakukan.
+- **Export Excel**: Unduh laporan rekapitulasi dalam format Excel untuk keperluan administrasi kantor.
+
+### ⚙️ F. Training Model (Admin Only)
+Menjaga kecerdasan sistem:
+- **Data Latih**: Sistem memerlukan minimal 60 data latih (10 per kelas) agar akurat.
+- **Confusion Matrix**: Visualisasi akurasi model untuk melihat seberapa tepat prediksi sistem dibandingkan data aktual.
+
+---
+
+## 📂 4. Penting Diketahui
+- **Database**: File `data_skripsi.db` berisi semua data Anda. **Jangan menghapus file ini**, karena semua data warga dan hasil klasifikasi akan hilang.
+- **Penyimpanan**: Aplikasi ini tidak memerlukan koneksi internet untuk berfungsi (Offline-ready).
+
+---
+
+## 🏷️ Kategori Kelas
+1.  **Kelas 1**: Sangat Miskin
+2.  **Kelas 2**: Miskin
+3.  **Kelas 3**: Hampir Miskin
+4.  **Kelas 4**: Rentan Miskin
+5.  **Kelas 5**: Pas-pasan
+6.  **Kelas 6**: Menengah ke Atas
+
+---
+*© 2026 Arina - Sistem Klasifikasi Kesejahteraan Kelurahan Randuagung*
