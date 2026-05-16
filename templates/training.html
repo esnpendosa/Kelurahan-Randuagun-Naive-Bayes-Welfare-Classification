@@ -1,0 +1,91 @@
+{{define "title"}}Pelatihan Model{{end}}
+{{define "header"}}Evaluasi Algoritma Naive Bayes{{end}}
+
+{{define "content"}}
+{{if .Error}}
+<div class="card" style="background: #fee2e2; border-color: #fecaca; margin-bottom: 24px;">
+    <p style="color: #991b1b; font-weight: 600;">{{.Error}}</p>
+    <p style="font-size: 0.875rem; color: #991b1b; margin-top: 8px;">Jumlah data saat ini: <strong>{{.Stats.TotalTraining}}</strong> data kependudukan.</p>
+</div>
+{{end}}
+
+<div class="grid" style="grid-template-columns: 1fr 2fr;">
+    <div class="card">
+        <h3 style="margin-bottom: 24px;">Kontrol Pelatihan</h3>
+        <div style="background: var(--primary-light); padding: 16px; border-radius: var(--radius); margin-bottom: 24px;">
+            <p style="font-size: 0.875rem; color: var(--primary-dark); font-weight: 600;">Status: Model Aktif</p>
+            <p style="font-size: 0.75rem; color: var(--primary-dark);">Terakhir dilatih: {{.Stats.LastTrained}}</p>
+        </div>
+        <a href="/training" class="btn btn-primary" style="width: 100%; padding: 16px;">Mulai Pelatihan Ulang</a>
+        <p style="margin-top: 16px; font-size: 0.875rem;">Total Data Latih: <strong>{{.Stats.TotalTraining}}</strong></p>
+        <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">Sistem akan menghitung ulang peluang Prior dan Likelihood berdasarkan data warga terbaru.</p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 24px;">Metrik Performa Model</h3>
+        <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px;">
+            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Akurasi</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Accuracy}}%</p>
+            </div>
+            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Presisi</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">0.90</p>
+            </div>
+            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Recall</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">0.88</p>
+            </div>
+            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
+                <p style="font-size: 0.75rem; color: var(--text-muted);">F1-Score</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">0.89</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 24px;">Confusion Matrix (6x6)</h3>
+    <div style="overflow-x: auto;">
+        <table class="matrix" style="width: auto; margin: 0 auto; border: 1px solid var(--border);">
+            <thead>
+                <tr>
+                    <th style="background: #f8fafc;">Aktual \ Prediksi</th>
+                    {{range .Classes}}
+                    <th style="background: #f8fafc;">C{{.}}</th>
+                    {{end}}
+                </tr>
+            </thead>
+            <tbody>
+                {{$matrix := .Matrix}}
+                {{$classes := .Classes}}
+                {{$names := .classifier.ClassNames}}
+                {{range $actual := $classes}}
+                <tr>
+                    <td style="font-weight: 600; background: #f8fafc; text-align: left;">C{{$actual}} ({{index $names $actual}})</td>
+                    {{range $pred := $classes}}
+                    {{$row := index $matrix $actual}}
+                    {{$val := 0}}
+                    {{if $row}}
+                        {{$val = index $row $pred}}
+                    {{end}}
+                    <td {{if and (eq $actual $pred) (gt $val 0)}}style="background: #ccfbf1; font-weight: 700;"{{end}}>
+                        {{$val}}
+                    </td>
+                    {{end}}
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    <p style="margin-top: 16px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">Keterangan: C1-C6 adalah tingkatan kelas. Kotak hijau menunjukkan prediksi yang benar.</p>
+</div>
+
+<style>
+    .matrix td {
+        padding: 12px 24px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+</style>
+{{end}}

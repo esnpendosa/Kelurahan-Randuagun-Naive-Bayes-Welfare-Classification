@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{template "title" .}} - Kelurahan Randuagung</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>RANDUAGUNG</h2>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Sistem Naive Bayes</p>
+        </div>
+        <nav class="nav-links">
+            <a href="/" id="nav-dashboard">Dashboard</a>
+            {{if eq .User.Role "Admin"}}
+            <a href="/warga" id="nav-warga">Data Warga</a>
+            {{end}}
+            <a href="/klasifikasi" id="nav-klasifikasi">Klasifikasi Baru</a>
+            {{if eq .User.Role "Admin"}}
+            <a href="/training" id="nav-training">Training Model</a>
+            {{end}}
+            <a href="/laporan" id="nav-laporan">Laporan</a>
+            {{if eq .User.Role "Admin"}}
+            <a href="/users" id="nav-users">Manajemen User</a>
+            {{end}}
+        </nav>
+        <div class="sidebar-footer" style="padding-top: 20px; border-top: 1px solid var(--border);">
+            <p style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">&copy; 2026 Muhammad As'ad Muhibbin Akbar</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">v1.0.0 Desktop Web</p>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <header class="topbar">
+            <div>
+                <h1 style="font-size: 1.125rem; font-weight: 600;">{{template "header" .}}</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div style="text-align: right; border-right: 1px solid var(--border); padding-right: 20px;">
+                    <p style="font-size: 0.875rem; font-weight: 700; color: var(--text-main); line-height: 1;">{{.User.Name}}</p>
+                    <p style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">{{.User.Role}}</p>
+                </div>
+                <a href="/logout" class="btn btn-sm btn-danger" style="background: transparent; color: #991b1b; border: 1px solid #fecaca;">Logout</a>
+            </div>
+        </header>
+
+        <main class="content">
+            {{template "content" .}}
+        </main>
+    </div>
+
+    <script>
+        // Logika untuk menandai menu aktif di sidebar
+        const path = window.location.pathname;
+        const links = document.querySelectorAll('.nav-links a');
+        links.forEach(link => {
+            if (path === link.getAttribute('href')) {
+                link.classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>

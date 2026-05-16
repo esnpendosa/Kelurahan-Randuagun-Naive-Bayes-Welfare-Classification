@@ -1,0 +1,42 @@
+{{define "title"}}Hasil Analisis{{end}}
+{{define "header"}}Prediksi Tingkat Kesejahteraan{{end}}
+
+{{define "content"}}
+<div class="card" style="text-align: center; padding: 48px;">
+    <p style="color: var(--text-muted); margin-bottom: 8px;">Hasil Klasifikasi untuk Keluarga</p>
+    <h2 style="font-size: 1.5rem; margin-bottom: 24px;">{{.Warga.NamaKK}} ({{.Warga.NIK}})</h2>
+    
+    <div style="display: inline-block; padding: 20px 40px; border-radius: 12px; background: var(--primary-light); color: var(--primary-dark); font-weight: 800; font-size: 2.25rem; margin-bottom: 32px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+        {{.Result.ClassName}}
+    </div>
+
+    <div style="max-width: 600px; margin: 40px auto 0; text-align: left;">
+        <h4 style="margin-bottom: 20px; border-bottom: 2px solid var(--primary-light); padding-bottom: 8px;">Probabilitas Per Kelas:</h4>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            {{range .Probabilities}}
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="prob-label">{{.Label}}</div>
+                <div style="flex-grow: 1; height: 12px; background: #f1f5f9; border-radius: 999px; overflow: hidden; border: 1px solid var(--border);">
+                    <div data-percent="{{.Percent}}" class="prob-bar {{if .IsMax}}primary{{else}}muted{{end}}"></div>
+                </div>
+                <div class="prob-value {{if .IsMax}}active{{end}}">
+                    {{printf "%.1f%%" .Percent}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <div style="margin-top: 56px; display: flex; justify-content: center; gap: 16px;">
+        <a href="/klasifikasi" class="btn btn-secondary" style="padding: 12px 24px;">Kembali</a>
+        <button onclick="window.print()" class="btn btn-primary" style="padding: 12px 32px;">Cetak Hasil Prediksi</button>
+    </div>
+</div>
+
+<script>
+    // Terapkan lebar bar secara dinamis untuk menghindari error sintaksis CSS di IDE
+    document.querySelectorAll('.prob-bar').forEach(bar => {
+        bar.style.width = bar.dataset.percent + '%';
+    });
+</script>
+{{end}}

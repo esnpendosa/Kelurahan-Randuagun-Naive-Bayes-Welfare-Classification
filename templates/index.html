@@ -1,0 +1,65 @@
+{{define "title"}}Dashboard{{end}}
+{{define "header"}}Ringkasan Sistem Klasifikasi{{end}}
+
+{{define "content"}}
+<div class="grid">
+    <div class="stat-card">
+        <p class="stat-label">Total Data Warga</p>
+        <p class="stat-value">{{.Stats.TotalWarga}}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Warga Terklasifikasi</p>
+        <p class="stat-value">{{.Stats.TotalKlasifikasi}}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Akurasi Model</p>
+        <p class="stat-value">{{.Stats.Accuracy}}%</p>
+    </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="card">
+        <h3>Distribusi Kelas Kesejahteraan</h3>
+        <canvas id="welfareChart" style="margin-top: 24px; max-height: 300px;"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Aktivitas Terbaru</h3>
+        <ul style="list-style: none; margin-top: 20px;">
+            {{range .Aktivitas}}
+            <li style="padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <p style="font-size: 0.875rem; font-weight: 600;">{{.Aksi}}</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">{{.Waktu}}</p>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+</div>
+<div id="dist-data-raw" style="display: none;">{{.DistribusiJSON}}</div>
+
+<script>
+    const distData = JSON.parse(document.getElementById('dist-data-raw').textContent);
+    const ctx = document.getElementById('welfareChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: distData.map(d => d.Label),
+            datasets: [{
+                label: 'Jumlah Warga',
+                data: distData.map(d => d.Count),
+                backgroundColor: '#0d9488',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+{{end}}

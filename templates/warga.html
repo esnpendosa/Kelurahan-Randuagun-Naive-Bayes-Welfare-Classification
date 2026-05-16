@@ -1,0 +1,60 @@
+{{define "title"}}Manajemen Warga{{end}}
+{{define "header"}}Data Kependudukan Randuagung{{end}}
+
+{{define "content"}}
+<div class="card" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; gap: 12px;">
+        <input type="text" placeholder="Cari NIK atau Nama..." style="width: 300px;">
+        <button class="btn btn-secondary">Cari</button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <form action="/import/warga" method="POST" enctype="multipart/form-data" style="display: flex; gap: 4px; align-items: center; border: 1px dashed var(--border); padding: 4px 8px; border-radius: var(--radius);">
+            <input type="file" name="excel_file" accept=".xlsx" style="font-size: 0.75rem; width: 180px;" required>
+            <button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Import</button>
+        </form>
+        <form action="/warga/hapus-semua" method="POST" style="margin: 0;" onsubmit="return confirm('Hapus SELURUH data warga? Tindakan ini tidak dapat dibatalkan.')">
+            <button type="submit" class="btn btn-danger">Reset Data</button>
+        </form>
+        <a href="/export/warga" class="btn btn-secondary">Export Excel</a>
+        <a href="/warga/tambah" class="btn btn-primary">+ Tambah Warga Baru</a>
+    </div>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+    <table>
+        <thead>
+            <tr>
+                <th width="180">NIK</th>
+                <th>Nama Lengkap</th>
+                <th>Alamat</th>
+                <th>Dusun</th>
+                <th class="text-right">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Warga}}
+            <tr>
+                <td style="font-family: monospace; font-size: 0.8rem;">{{.NIK}}</td>
+                <td>
+                    <span style="font-weight: 600;">{{.NamaKK}}</span>
+                    {{if .IsTraining}}<span class="badge" style="background: #e2e8f0; color: #475569; margin-left: 8px;">Data Latih</span>{{end}}
+                </td>
+                <td>{{.Alamat}}</td>
+                <td>{{.Dusun}}</td>
+                <td class="text-right">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <a href="/warga/edit/{{.ID}}" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="/klasifikasi?id={{.ID}}" class="btn btn-sm btn-primary">Klasifikasi</a>
+                        <a href="/warga/hapus/{{.ID}}" class="btn btn-sm btn-danger" onclick="return confirm('Hapus data ini?')">Hapus</a>
+                    </div>
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 48px; color: var(--text-muted);">Belum ada data warga. Silakan tambah atau import data.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

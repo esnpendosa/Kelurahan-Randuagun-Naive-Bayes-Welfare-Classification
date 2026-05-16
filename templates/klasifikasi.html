@@ -1,0 +1,45 @@
+{{define "title"}}Klasifikasi Baru{{end}}
+{{define "header"}}Input Data Klasifikasi Kesejahteraan{{end}}
+
+{{define "content"}}
+<form action="/klasifikasi/proses" method="POST">
+    <div class="card" style="margin-bottom: 24px;">
+        <h3 style="margin-bottom: 20px;">1. Pilih Data Warga</h3>
+        <div class="form-group" style="max-width: 400px;">
+            <label>Cari Nama atau NIK Warga</label>
+            <select name="resident_id" required style="font-size: 1rem; padding: 12px;">
+                <option value="" disabled {{if not .SelectedID}}selected{{end}}>--- Pilih Warga ---</option>
+                {{range .Warga}}
+                <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.NIK}} - {{.NamaKK}}</option>
+                {{end}}
+            </select>
+        </div>
+    </div>
+
+    {{range .Sections}}
+    <div class="card" style="margin-bottom: 24px;">
+        <h3 style="margin-bottom: 20px; color: var(--primary);">2. {{.Name}}</h3>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            {{range .Indicators}}
+            <div class="form-group">
+                <label style="margin-bottom: 12px; display: block; line-height: 1.4;">{{.ID}}. {{.Label}}</label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    {{range .Pilihan}}
+                    <label style="font-weight: 400; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="radio" name="{{$.ID}}" value="{{.}}" required style="width: auto;">
+                        <span>Kategori {{.}}</span>
+                    </label>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    <div class="card" style="display: flex; justify-content: flex-end; gap: 16px;">
+        <button type="reset" class="btn btn-secondary">Bersihkan Form</button>
+        <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 1rem;">Mulai Proses Klasifikasi</button>
+    </div>
+</form>
+{{end}}

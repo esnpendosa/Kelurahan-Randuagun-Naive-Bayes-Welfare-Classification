@@ -1,0 +1,52 @@
+{{define "title"}}Edit Data Warga{{end}}
+{{define "header"}}Perbarui Informasi Kependudukan{{end}}
+
+{{define "content"}}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h3 style="margin-bottom: 24px;">Data Warga: {{.Warga.NamaKK}}</h3>
+    <form action="/warga/update" method="POST">
+        <input type="hidden" name="id" value="{{.Warga.ID}}">
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>NIK (Nomor Induk Kependudukan)</label>
+                <input type="text" name="nik" value="{{.Warga.NIK}}" required>
+            </div>
+            <div class="form-group">
+                <label>Nomor KK</label>
+                <input type="text" name="no_kk" value="{{.Warga.NoKK}}" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Nama Lengkap (Kepala Keluarga)</label>
+            <input type="text" name="nama" value="{{.Warga.NamaKK}}" required>
+        </div>
+
+        <div class="form-group">
+            <label>Alamat Lengkap</label>
+            <input type="text" name="alamat" value="{{.Warga.Alamat}}" required>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr 2fr;">
+            <div class="form-group">
+                <label>RT</label>
+                <input type="text" name="rt" value="{{.Warga.RT}}" required>
+            </div>
+            <div class="form-group">
+                <label>RW</label>
+                <input type="text" name="rw" value="{{.Warga.RW}}" required>
+            </div>
+            <div class="form-group">
+                <label>Dusun</label>
+                <input type="text" name="dusun" value="{{.Warga.Dusun}}" required>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <a href="/warga" class="btn btn-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+{{end}}

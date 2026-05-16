@@ -1,0 +1,65 @@
+{{define "title"}}Manajemen Pengguna{{end}}
+{{define "header"}}Kelola Akun Sistem{{end}}
+
+{{define "content"}}
+<div class="card" style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 20px;">Tambah Pengguna Baru</h3>
+    <form action="/users/simpan" method="POST">
+        <div class="form-row">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Nama Pengguna</label>
+                <input type="text" name="username" required placeholder="Masukkan nama pengguna">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Kata Sandi</label>
+                <input type="password" name="password" required placeholder="Masukkan kata sandi">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Peran (Role)</label>
+                <select name="role" required>
+                    <option value="" disabled selected>Pilih Peran</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Operator">Operator</option>
+                </select>
+            </div>
+            <div style="display: flex; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Tambah Akun</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3>Daftar Pengguna Aktif</h3>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th width="80">No</th>
+                <th>Nama Pengguna</th>
+                <th>Peran</th>
+                <th class="text-right">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range $i, $u := .Users}}
+            <tr>
+                <td>{{inc $i}}</td>
+                <td><span style="font-weight: 500;">{{.Username}}</span></td>
+                <td><span class="badge" style="background: #f1f5f9; color: var(--text-main); border: 1px solid var(--border);">{{.Role}}</span></td>
+                <td class="text-right">
+                    <a href="/users/edit/{{.ID}}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="/users/hapus/{{.ID}}" class="btn btn-sm btn-danger" onclick="return confirm('Hapus akun ini?')">Hapus</a>
+                </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Belum ada akun tambahan.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

@@ -1,0 +1,47 @@
+{{define "title"}}Laporan Klasifikasi{{end}}
+{{define "header"}}Rekapitulasi Kesejahteraan Masyarakat{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3>Data Laporan Kesejahteraan</h3>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn btn-secondary">Filter Data</button>
+            <a href="/export/laporan" class="btn btn-primary">Export Excel</a>
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>NIK</th>
+                <th>Nama Lengkap</th>
+                <th>Alamat</th>
+                <th>Hasil Klasifikasi</th>
+                <th>Keterangan</th>
+                <th>Tanggal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range $i, $res := .Results}}
+            <tr>
+                <td>{{inc $i}}</td>
+                <td style="font-family: monospace;">{{.NIK}}</td>
+                <td style="font-weight: 600;">{{.NamaKK}}</td>
+                <td>{{.Alamat}}</td>
+                <td><span class="badge badge-{{badgeClass .ClassName}}">{{.ClassName}}</span></td>
+                <td>
+                    <span class="badge" style="background: #f1f5f9; color: #475569; text-transform: none; font-weight: 500;">{{.Status}}</span>
+                </td>
+                <td>{{.Date}}</td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada data laporan yang tersedia.</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

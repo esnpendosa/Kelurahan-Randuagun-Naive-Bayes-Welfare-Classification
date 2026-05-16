@@ -1,0 +1,34 @@
+{{define "title"}}Edit Pengguna{{end}}
+{{define "header"}}Perbarui Akun Pengguna{{end}}
+
+{{define "content"}}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h3 style="margin-bottom: 24px;">Data Pengguna: {{.EditUser.Username}}</h3>
+    <form action="/users/update" method="POST">
+        <input type="hidden" name="id" value="{{.EditUser.ID}}">
+        
+        <div class="form-group">
+            <label>Nama Pengguna</label>
+            <input type="text" name="username" value="{{.EditUser.Username}}" required>
+        </div>
+
+        <div class="form-group">
+            <label>Kata Sandi Baru (Kosongkan jika tidak diubah)</label>
+            <input type="password" name="password" placeholder="Masukkan kata sandi baru jika ingin diubah">
+        </div>
+
+        <div class="form-group">
+            <label>Peran (Role)</label>
+            <select name="role" required>
+                <option value="Admin" {{if eq .EditUser.Role "Admin"}}selected{{end}}>Admin</option>
+                <option value="Operator" {{if eq .EditUser.Role "Operator"}}selected{{end}}>Operator</option>
+            </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+            <a href="/users" class="btn btn-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+{{end}}
