@@ -17,7 +17,16 @@ import (
 	"github.com/gorilla/sessions"              // Mengimpor paket manajemen sesi
 	"github.com/labstack/echo-contrib/session" // Integrasi sesi untuk Echo
 	"golang.org/x/crypto/bcrypt"               // Mengimpor paket enkripsi kata sandi
+	"net"      // Paket untuk operasi jaringan (cek port)
+
+	"embed"    // Paket untuk menyematkan file statis ke dalam binary
+	"os"       // Paket untuk operasi sistem operasi (seperti Exit)
+	"os/exec"  // Paket untuk menjalankan perintah eksternal
+	"runtime"  // Paket untuk mendeteksi sistem operasi saat ini
 )
+
+//go:embed templates static
+var fsSistem embed.FS
 
 // Inisialisasi penyimpanan sesi menggunakan cookie dengan kunci rahasia
 var penyimpananSesi = sessions.NewCookieStore([]byte("kunci-rahasia-klasifikasi-kesejahteraan"))
@@ -48,7 +57,9 @@ func main() {
 	e.Use(middleware.Logger())  // Mencatat setiap request ke log terminal
 	e.Use(middleware.Recover()) // Mencegah aplikasi berhenti (crash) jika terjadi error fatal
 	e.Use(session.Middleware(penyimpananSesi)) // Mengaktifkan manajemen sesi user
-	e.Static("/static", "static") // Mengatur folder statis untuk CSS/JS/Gambar
+	
+	// Mengatur folder statis menggunakan file yang disematkan (embedded)
+	e.StaticFS("/static", echo.MustSubFS(fsSistem, "static"))
 
 	// Pengaturan Fungsi Tambahan (FuncMap) untuk Template
 	petaFungsi := template.FuncMap{
@@ -74,13 +85,13 @@ func main() {
 	// Daftar halaman yang akan dikompilasi bersama layout base.html
 	halaman := []string{"index.html", "warga.html", "warga_tambah.html", "warga_edit.html", "klasifikasi.html", "hasil.html", "training.html", "laporan.html", "users.html", "users_edit.html"}
 	for _, hal := range halaman {
-		// Menggabungkan base.html dengan file konten spesifik
-		perender.templates[hal] = template.Must(template.New(hal).Funcs(petaFungsi).ParseFiles("templates/base.html", "templates/"+hal))
+		// Menggabungkan base.html dengan file konten spesifik dari embedded FS
+		perender.templates[hal] = template.Must(template.New(hal).Funcs(petaFungsi).ParseFS(fsSistem, "templates/base.html", "templates/"+hal))
 	}
 	
-	// Registrasi halaman mandiri (tanpa layout base)
-	perender.templates["login.html"] = template.Must(template.New("login.html").Funcs(petaFungsi).ParseFiles("templates/login.html"))
-	perender.templates["register.html"] = template.Must(template.New("register.html").Funcs(petaFungsi).ParseFiles("templates/register.html"))
+	// Registrasi halaman mandiri dari embedded FS
+	perender.templates["login.html"] = template.Must(template.New("login.html").Funcs(petaFungsi).ParseFS(fsSistem, "templates/login.html"))
+	perender.templates["register.html"] = template.Must(template.New("register.html").Funcs(petaFungsi).ParseFS(fsSistem, "templates/register.html"))
 	
 	e.Renderer = perender // Mengatur Echo agar menggunakan perender kustom kita
 
@@ -703,7 +714,60 @@ func main() {
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
-	// Mulai Server di Port 8080
-	fmt.Println("Server berjalan di http://localhost:8080")
-	e.Logger.Fatal(e.Start(":8080"))
+	// Rute untuk mematikan aplikasi secara aman
+	e.GET("/shutdown", func(c echo.Context) error {
+		go func() {
+			time.Sleep(1 * time.Second)
+			os.Exit(0)
+		}()
+		return c.String(http.StatusOK, "Aplikasi telah dimatikan. Anda dapat menutup tab ini.")
+	})
+
+	// Mencari port yang tersedia mulai dari 8080
+	port := 8080
+	var serverErr error
+	for {
+		addr := fmt.Sprintf(":%d", port)
+		// Cek apakah port bisa digunakan
+		l, err := net.Listen("tcp", addr)
+		if err == nil {
+			l.Close()
+			
+			// Membuka browser secara otomatis ke port yang ditemukan
+			go func(p int) {
+				time.Sleep(500 * time.Millisecond)
+				bukaBrowser(fmt.Sprintf("http://localhost:%d", p))
+			}(port)
+
+			fmt.Printf("Server berjalan di http://localhost:%d\n", port)
+			serverErr = e.Start(addr)
+			break
+		}
+		
+		port++
+		if port > 8090 { // Coba sampai 10 port
+			serverErr = fmt.Errorf("Tidak dapat menemukan port yang tersedia antara 8080-8090")
+			break
+		}
+	}
+
+	if serverErr != nil {
+		e.Logger.Fatal(serverErr)
+	}
+}
+
+// bukaBrowser membuka URL di browser default berdasarkan sistem operasi
+func bukaBrowser(url string) {
+	var err error
+	switch runtime.GOOS {
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default: // linux
+		err = exec.Command("xdg-open", url).Start()
+	}
+	if err != nil {
+		fmt.Printf("Gagal membuka browser: %v\n", err)
+	}
 }
