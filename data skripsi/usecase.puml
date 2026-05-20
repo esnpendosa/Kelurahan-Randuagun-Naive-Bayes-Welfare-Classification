@@ -1,0 +1,76 @@
+@startuml Usecase_Sistem_Klasifikasi
+!theme plain
+skinparam backgroundColor #FAFAFA
+left to right direction
+skinparam packageStyle rectangle
+skinparam usecase {
+    BackgroundColor #D4E6F1
+    BorderColor #2874A6
+}
+skinparam actor {
+    BackgroundColor #FDEBD0
+    BorderColor #B9770E
+}
+
+actor "Admin / Perangkat Desa" as admin
+
+rectangle "Sistem Klasifikasi Kesejahteraan" {
+    
+    package "1. Autentikasi" {
+        usecase "Login ke Sistem" as UC_Login
+        usecase "Logout dari Sistem" as UC_Logout
+    }
+    
+    package "2. Manajemen Warga" {
+        usecase "Tambah Warga Baru" as UC_TambahWarga
+        usecase "Ubah Data Warga" as UC_UbahWarga
+        usecase "Hapus Data Warga" as UC_HapusWarga
+        usecase "Import Data via Excel" as UC_ImportWarga
+    }
+    
+    package "3. Klasifikasi Kesejahteraan" {
+        usecase "Pilih Warga" as UC_PilihWarga
+        usecase "Isi 36 Indikator" as UC_IsiIndikator
+        usecase "Proses Naive Bayes" as UC_ProsesNB
+        usecase "Lihat Hasil & Grafik" as UC_LihatHasil
+        
+        UC_PilihWarga .> UC_IsiIndikator : include
+        UC_IsiIndikator .> UC_ProsesNB : include
+        UC_ProsesNB .> UC_LihatHasil : include
+    }
+    
+    package "4. Training Model" {
+        usecase "Latih Ulang Model" as UC_Training
+        usecase "Lihat Akurasi & Matriks" as UC_Akurasi
+        
+        UC_Training .> UC_Akurasi : include
+    }
+    
+    package "5. Laporan" {
+        usecase "Lihat Riwayat Klasifikasi" as UC_Riwayat
+        usecase "Export ke Excel" as UC_Export
+    }
+    
+    package "6. Manajemen Pengguna" {
+        usecase "Kelola Akun Admin" as UC_KelolaAkun
+    }
+}
+
+admin --> UC_Login
+admin --> UC_Logout
+
+admin --> UC_TambahWarga
+admin --> UC_UbahWarga
+admin --> UC_HapusWarga
+admin --> UC_ImportWarga
+
+admin --> UC_PilihWarga
+
+admin --> UC_Training
+
+admin --> UC_Riwayat
+admin --> UC_Export
+
+admin --> UC_KelolaAkun
+
+@enduml

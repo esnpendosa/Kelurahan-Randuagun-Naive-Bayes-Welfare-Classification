@@ -27,7 +27,7 @@
                 <th width="180">NIK</th>
                 <th>Nama Lengkap</th>
                 <th>Alamat</th>
-                <th>Dusun</th>
+                <th>Kelurahan</th>
                 <th class="text-right">Aksi</th>
             </tr>
         </thead>
@@ -40,7 +40,7 @@
                     {{if .IsTraining}}<span class="badge" style="background: #e2e8f0; color: #475569; margin-left: 8px;">Data Latih</span>{{end}}
                 </td>
                 <td>{{.Alamat}}</td>
-                <td>{{.Dusun}}</td>
+                <td>{{.Kelurahan}}</td>
                 <td class="text-right">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
                         <a href="/warga/edit/{{.ID}}" class="btn btn-sm btn-warning">Edit</a>

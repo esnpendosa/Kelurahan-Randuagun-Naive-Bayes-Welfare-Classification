@@ -1,0 +1,89 @@
+@startuml Flowchart_Sistem_Klasifikasi
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam activity {
+    BackgroundColor #D5F5E3
+    BorderColor #1E8449
+    FontSize 12
+}
+skinparam diamond {
+    BackgroundColor #FCF3CF
+    BorderColor #D4AC0D
+}
+skinparam note {
+    BackgroundColor #FDFEFE
+    BorderColor #AAB7B8
+}
+
+title Flowchart - Sistem Klasifikasi Kesejahteraan Warga\nKelurahan Randuagung
+
+start
+
+:Admin membuka aplikasi\ndan login ke sistem;
+
+if (Login berhasil?) then (Ya)
+  :Masuk ke Dashboard Utama;
+else (Tidak)
+  :Tampilkan pesan error\n"Username/Password salah";
+  stop
+endif
+
+:Pilih menu yang diinginkan;
+
+fork
+  :=== MENU: DATA WARGA ===
+  Tambah / Ubah / Hapus\ndata kepala keluarga;
+  if (Data lengkap & valid?) then (Ya)
+    :Simpan data warga\nke database;
+  else (Tidak)
+    :Tampilkan peringatan\ndata kurang lengkap;
+  endif
+
+fork again
+  :=== MENU: KLASIFIKASI BARU ===
+  Pilih nama warga\ndari dropdown;
+  :Isi 36 indikator kemiskinan\n(Kondisi Rumah, Ekonomi, Aset);
+  if (Semua 36 indikator diisi?) then (Ya)
+    :Klik tombol\n"Mulai Proses Klasifikasi";
+    note right
+      === PROSES NAIVE BAYES ===
+      1. Hitung Probabilitas Prior
+         P(Kelas) = Jumlah data kelas
+                    / Total semua data latih
+      2. Hitung Probabilitas Likelihood
+         P(IM1=A | Kelas1), dst.
+      3. Kalikan semua probabilitas
+         untuk setiap kelas (1-6)
+      4. Pilih kelas dengan
+         hasil perkalian tertinggi
+    end note
+    :Tampilkan hasil klasifikasi\n+ Grafik 6 kelas;
+    :Simpan hasil ke riwayat;
+  else (Belum)
+    :Tampilkan peringatan\njawab semua pertanyaan;
+  endif
+
+fork again
+  :=== MENU: TRAINING MODEL ===;
+  if (Data latih >= 60\n(min 10 per kelas)?) then (Ya)
+    :Latih ulang model\nNaive Bayes;
+    :Evaluasi dengan\nConfusion Matrix;
+    :Tampilkan akurasi,\npresisi, recall;
+  else (Tidak)
+    :Tampilkan peringatan\n"Data latih tidak cukup";
+  endif
+
+fork again
+  :=== MENU: LAPORAN ===
+  Lihat riwayat semua\nhasil klasifikasi;
+  if (Export ke Excel?) then (Ya)
+    :Download file\nlaporan .xlsx;
+  endif
+
+end fork
+
+:Lanjut bekerja atau Logout;
+
+stop
+
+@enduml

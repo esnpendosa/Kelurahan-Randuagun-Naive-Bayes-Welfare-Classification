@@ -34,7 +34,7 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 			alamat TEXT DEFAULT '',
 			rt TEXT DEFAULT '',
 			rw TEXT DEFAULT '',
-			dusun TEXT DEFAULT '',
+			kelurahan TEXT DEFAULT '',
 			data_latih INTEGER DEFAULT 0,
 			label_kelas TEXT DEFAULT '',
 			dibuat_pada DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -129,9 +129,9 @@ func AmbilDataLatih(db *sql.DB) ([]DataLatih, error) {
 }
 
 // TambahWarga memasukkan data kependudukan baru ke database
-func TambahWarga(db *sql.DB, nik, no_kk, nama, alamat, rt, rw, dusun string) (int64, error) {
-	res, err := db.Exec("INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, dusun) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		nik, no_kk, nama, alamat, rt, rw, dusun)
+func TambahWarga(db *sql.DB, nik, no_kk, nama, alamat, rt, rw, kelurahan string) (int64, error) {
+	res, err := db.Exec("INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		nik, no_kk, nama, alamat, rt, rw, kelurahan)
 	if err != nil {
 		return 0, err
 	}
