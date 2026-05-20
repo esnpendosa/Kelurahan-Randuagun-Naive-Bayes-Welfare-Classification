@@ -348,26 +348,39 @@ func main() {
 		return c.Render(http.StatusOK, "klasifikasi.html", data)
 	}, middlewareAutentikasi)
 
-	// Proses Prediksi Naive Bayes
+	// Endpoint POST untuk memproses data indikator dan menghasilkan kelas kesejahteraan
 	e.POST("/klasifikasi/proses", func(c echo.Context) error {
+		// Mengambil ID warga dari form input HTML yang dikirim melalui POST
 		idWarga := c.FormValue("resident_id")
 		
+		// Membuat map kosong untuk menyimpan nilai-nilai indikator (IM1 - IM36)
 		inputan := make(map[string]string)
+		
+		// Melakukan perulangan untuk setiap indikator yang ada (36 indikator)
 		for _, i := range daftarIndikator {
-			inputan[i.ID] = c.FormValue(i.ID) // Mengambil 36 nilai dari form input
+			// Mengambil nilai input dari form berdasarkan ID indikator (contoh: IM1=A)
+			inputan[i.ID] = c.FormValue(i.ID) 
 		}
 
-		// Menghitung probabilitas menggunakan model yang sudah dilatih
+		// Memanggil fungsi Prediksi pada model Naive Bayes menggunakan data inputan
+		// Hasilnya adalah map probabilitas kemiripan warga tersebut ke setiap kelas (1-6)
 		peluang := modelNB.Prediksi(inputan)
+		
+		// Memilih kelas kesejahteraan dengan probabilitas tertinggi dari hasil perhitungan
 		kelasTerbaik := modelNB.AmbilKelasTerbaik(peluang)
+		
+		// Mengubah ID kelas (1-6) menjadi teks nama kelas (contoh: "Miskin", "Pas-pasan")
 		namaKelas := classifier.DaftarNamaKelas[kelasTerbaik]
 
-		// Simpan hasil klasifikasi ke riwayat database
+		// Mengubah hasil perhitungan peluang menjadi format string JSON agar bisa disimpan di database
 		peluangJSON, _ := json.Marshal(peluang)
+		
+		// Menjalankan query SQL untuk menyimpan hasil akhir klasifikasi ke dalam tabel hasil_klasifikasi
 		dbSistem.Exec("INSERT INTO hasil_klasifikasi (warga_id, nama_kelas, probabilitas) VALUES (?, ?, ?)", 
 			idWarga, namaKelas, string(peluangJSON))
 
-		return c.Redirect(http.StatusSeeOther, "/hasil/"+idWarga) // Arahkan ke halaman visualisasi hasil
+		// Setelah perhitungan selesai, sistem akan mengarahkan pengguna (redirect) ke halaman hasil visualisasi
+		return c.Redirect(http.StatusSeeOther, "/hasil/"+idWarga)
 	}, middlewareAutentikasi)
 
 	// Visualisasi Hasil Klasifikasi & Probabilitas 6 Kelas
