@@ -277,7 +277,7 @@ func main() {
 	// Daftar Warga (Khusus Admin)
 	e.GET("/warga", func(c echo.Context) error {
 		// Mengambil semua data warga diurutkan berdasarkan status data latih
-		rows, err := dbSistem.Query("SELECT id, nik, no_kk, nama_lengkap, alamat, dusun, data_latih FROM warga ORDER BY data_latih DESC, id ASC")
+		rows, err := dbSistem.Query("SELECT id, nik, no_kk, nama_lengkap, alamat, kelurahan, data_latih FROM warga ORDER BY data_latih DESC, id ASC")
 		if err != nil {
 			return err
 		}
@@ -286,12 +286,12 @@ func main() {
 		var daftarWarga []map[string]interface{}
 		for rows.Next() {
 			var id, isLatih int
-			var nik, nokk, nama, alamat, dusun string
-			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &dusun, &isLatih); err != nil {
+			var nik, nokk, nama, alamat, kelurahan string
+			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih); err != nil {
 				continue
 			}
 			daftarWarga = append(daftarWarga, map[string]interface{}{
-				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Dusun": dusun, "IsTraining": isLatih == 1,
+				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1,
 			})
 		}
 
@@ -547,9 +547,9 @@ func main() {
 		alamat := c.FormValue("alamat")
 		rt := c.FormValue("rt")
 		rw := c.FormValue("rw")
-		dusun := c.FormValue("dusun")
+		kelurahan := c.FormValue("kelurahan")
 
-		db.TambahWarga(dbSistem, nik, nokk, nama, alamat, rt, rw, dusun)
+		db.TambahWarga(dbSistem, nik, nokk, nama, alamat, rt, rw, kelurahan)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -564,14 +564,14 @@ func main() {
 			Alm  string
 			RT   string
 			RW   string
-			Dsn  string
+			Klh  string
 		}
-		dbSistem.QueryRow("SELECT id, nik, no_kk, nama_lengkap, alamat, rt, rw, dusun FROM warga WHERE id = ?", id).Scan(&w.ID, &w.NIK, &w.NoKK, &w.Nama, &w.Alm, &w.RT, &w.RW, &w.Dsn)
+		dbSistem.QueryRow("SELECT id, nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan FROM warga WHERE id = ?", id).Scan(&w.ID, &w.NIK, &w.NoKK, &w.Nama, &w.Alm, &w.RT, &w.RW, &w.Klh)
 		
 		data := map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Warga": map[string]interface{}{
-				"ID": w.ID, "NIK": w.NIK, "NoKK": w.NoKK, "NamaKK": w.Nama, "Alamat": w.Alm, "RT": w.RT, "RW": w.RW, "Dusun": w.Dsn,
+				"ID": w.ID, "NIK": w.NIK, "NoKK": w.NoKK, "NamaKK": w.Nama, "Alamat": w.Alm, "RT": w.RT, "RW": w.RW, "Kelurahan": w.Klh,
 			},
 		}
 		return c.Render(http.StatusOK, "warga_edit.html", data)
@@ -586,10 +586,10 @@ func main() {
 		alamat := c.FormValue("alamat")
 		rt := c.FormValue("rt")
 		rw := c.FormValue("rw")
-		dusun := c.FormValue("dusun")
+		kelurahan := c.FormValue("kelurahan")
 
-		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, dusun=? WHERE id=?", 
-			nik, nokk, nama, alamat, rt, rw, dusun, id)
+		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, kelurahan=? WHERE id=?", 
+			nik, nokk, nama, alamat, rt, rw, kelurahan, id)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -705,11 +705,11 @@ func main() {
 			nama := b[1]
 			alm := ""
 			if len(b) > 2 { alm = b[2] }
-			dsn := ""
-			if len(b) > 3 { dsn = b[3] }
+			klh := ""
+			if len(b) > 3 { klh = b[3] }
 			
 			// Simpan atau perbarui data warga
-			dbSistem.Exec("INSERT OR REPLACE INTO warga (nik, nama_lengkap, alamat, dusun) VALUES (?, ?, ?, ?)", nik, nama, alm, dsn)
+			dbSistem.Exec("INSERT OR REPLACE INTO warga (nik, nama_lengkap, alamat, kelurahan) VALUES (?, ?, ?, ?)", nik, nama, alm, klh)
 		}
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))

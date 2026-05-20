@@ -26,8 +26,8 @@
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     {{range .Pilihan}}
                     <label style="font-weight: 400; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <input type="radio" name="{{$.ID}}" value="{{.}}" required style="width: auto;">
-                        <span>Kategori {{.}}</span>
+                        <input type="radio" name="{{$.ID}}" value="{{.Kode}}" required style="width: auto;">
+                        <span>{{.Ket}}</span>
                     </label>
                     {{end}}
                 </div>

@@ -1,0 +1,81 @@
+@startuml ERD_Kesejahteraan_Warga
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam entity {
+    BackgroundColor #D6EAF8
+    BorderColor #2E86C1
+    FontSize 12
+    FontStyle bold
+}
+skinparam note {
+    BackgroundColor #FEF9E7
+    BorderColor #F39C12
+}
+
+title ERD - Sistem Klasifikasi Kesejahteraan Warga\nKelurahan Randuagung
+
+entity "PENGGUNA" as pengguna {
+    * id : INTEGER <<PK, AUTOINCREMENT>>
+    --
+    nama_pengguna : TEXT UNIQUE
+    kata_sandi    : TEXT
+    peran         : TEXT
+    ' Nilai: Admin
+}
+
+entity "WARGA" as warga {
+    * id            : INTEGER <<PK, AUTOINCREMENT>>
+    --
+    nik             : TEXT UNIQUE
+    no_kk           : TEXT
+    nama_lengkap    : TEXT
+    alamat          : TEXT
+    rt              : TEXT
+    rw              : TEXT
+    kelurahan       : TEXT
+    data_latih      : INTEGER DEFAULT 0
+    ' 0 = Data Uji (belum diketahui kelasnya)
+    ' 1 = Data Latih (sudah diketahui kelasnya)
+    label_kelas     : TEXT
+    ' Kelas 1 s.d. Kelas 6
+    dibuat_pada     : DATETIME DEFAULT CURRENT_TIMESTAMP
+}
+
+entity "DATA_INDIKATOR" as indikator {
+    * id            : INTEGER <<PK, AUTOINCREMENT>>
+    --
+    warga_id        : INTEGER <<FK>>
+    indikator_id    : TEXT
+    ' Kode indikator: IM1, IM2, ..., IM36
+    nilai           : TEXT
+    ' Jawaban pilihan: A / B / C / D
+}
+
+entity "HASIL_KLASIFIKASI" as hasil {
+    * id            : INTEGER <<PK, AUTOINCREMENT>>
+    --
+    warga_id        : INTEGER <<FK>>
+    nama_kelas      : TEXT
+    ' Contoh: Miskin, Hampir Miskin, dst.
+    probabilitas    : TEXT
+    ' Format JSON - 6 nilai peluang (Kelas 1-6)
+    dibuat_pada     : DATETIME DEFAULT CURRENT_TIMESTAMP
+}
+
+note right of warga
+    data_latih = 1 → Data Latih
+    data_latih = 0 → Data Uji
+    label_kelas: Kelas 1 .. Kelas 6
+end note
+
+note right of indikator
+    Setiap warga memiliki tepat
+    36 baris data indikator
+    (IM1 hingga IM36)
+end note
+
+pengguna ||--o{ warga      : "Admin mengelola"
+warga    ||--|{ indikator  : "1 warga memiliki\n36 data indikator"
+warga    ||--o{ hasil      : "1 warga bisa\ndiklasifikasi berkali-kali"
+
+@enduml
