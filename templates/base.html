@@ -1,9 +1,15 @@
+{{/* 
+Template Induk (Base Layout)
+Ini adalah layout utama yang digunakan oleh semua halaman (kecuali login dan register).
+Berisi struktur HTML dasar, sidebar navigasi, header atas (topbar), dan script aktifasi menu.
+*/}}
 <!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Menampilkan judul halaman dinamis berdasarkan definisi sub-template "title" -->
     <title>{{template "title" .}} - Kelurahan Randuagung</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
