@@ -419,7 +419,7 @@ func main() {
 		return c.Render(http.StatusOK, "hasil.html", data)
 	}, middlewareAutentikasi)
 
-	// Manajemen User (Khusus Admin)
+	// Pengaturan Akun (Khusus Admin)
 	e.GET("/users", func(c echo.Context) error {
 		pengguna, _ := db.AmbilSemuaPengguna(dbSistem)
 		data := map[string]interface{}{
@@ -440,8 +440,12 @@ func main() {
 				"Error": "Data latih tidak mencukupi. Minimal dibutuhkan 60 data (10 per kelas).",
 				"Stats": map[string]interface{}{
 					"TotalTraining": len(dataLatih), 
-					"Accuracy": 0.0,
-					"LastTrained": "Belum pernah",
+					"TotalTesting":  0,
+					"Accuracy":      0.0,
+					"Precision":     0.0,
+					"Recall":        0.0,
+					"F1Score":       0.0,
+					"LastTrained":   "Belum pernah",
 				},
 				"Matrix":  make(map[int]map[int]int),
 				"Classes": []int{},
@@ -462,7 +466,10 @@ func main() {
 		}
 		modelNB.LatihModel(in, tg)
 
-		// Evaluasi Model menggunakan Confusion Matrix 6x6
+		// Mengambil data uji dari database
+		dataUji, _ := db.AmbilDataUji(dbSistem)
+
+		// Evaluasi Model menggunakan Confusion Matrix 6x6 terhadap Data Uji
 		benar := 0
 		total := 0
 		matriks := make(map[classifier.KelasKesejahteraan]map[classifier.KelasKesejahteraan]int)
@@ -470,10 +477,10 @@ func main() {
 			matriks[k1] = make(map[classifier.KelasKesejahteraan]int)
 		}
 
-		for _, dl := range dataLatih {
-			p := modelNB.Prediksi(dl.Indikator)
+		for _, du := range dataUji {
+			p := modelNB.Prediksi(du.Indikator)
 			pred := modelNB.AmbilKelasTerbaik(p)
-			aktual := classifier.KelasKesejahteraan(dl.Kelas)
+			aktual := classifier.KelasKesejahteraan(du.Kelas)
 			
 			// Pastikan map untuk baris aktual sudah diinisialisasi
 			if matriks[aktual] == nil {
@@ -489,17 +496,79 @@ func main() {
 		if total > 0 {
 			akurasi = float64(benar) / float64(total)
 		}
-		fmt.Printf("Training selesai: %d data, Akurasi: %.2f%%\n", total, akurasi*100)
+
+		// Hitung Precision, Recall, dan F1-Score (Macro Average)
+		var totalPrecision, totalRecall, totalF1 float64
+		var classCount float64
+
+		for _, k := range modelNB.SemuaKelas {
+			tp := float64(matriks[k][k])
+			
+			var fp float64
+			for _, actualClass := range modelNB.SemuaKelas {
+				if actualClass != k {
+					fp += float64(matriks[actualClass][k])
+				}
+			}
+
+			var fn float64
+			for _, predClass := range modelNB.SemuaKelas {
+				if predClass != k {
+					fn += float64(matriks[k][predClass])
+				}
+			}
+
+			precision := 0.0
+			if tp+fp > 0 {
+				precision = tp / (tp + fp)
+			}
+
+			recall := 0.0
+			if tp+fn > 0 {
+				recall = tp / (tp + fn)
+			}
+
+			f1 := 0.0
+			if precision+recall > 0 {
+				f1 = 2 * (precision * recall) / (precision + recall)
+			}
+
+			totalPrecision += precision
+			totalRecall += recall
+			totalF1 += f1
+			classCount++
+		}
+
+		macroPrecision := 0.0
+		macroRecall := 0.0
+		macroF1 := 0.0
+		if classCount > 0 {
+			macroPrecision = totalPrecision / classCount
+			macroRecall = totalRecall / classCount
+			macroF1 = totalF1 / classCount
+		}
+
+		var errorUji string
+		if len(dataUji) == 0 {
+			errorUji = "Data uji tidak ditemukan atau tidak memiliki label kelas di database. Silakan import atau masukkan data warga dengan kategori Data Uji (data_latih = 0) beserta label kelas aktualnya."
+		}
+
+		fmt.Printf("Evaluasi selesai: %d data uji, Akurasi: %.2f%%\n", total, akurasi*100)
 
 		data := map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Stats": map[string]interface{}{
 				"TotalTraining": len(dataLatih),
+				"TotalTesting":  len(dataUji),
 				"Accuracy":      akurasi * 100,
+				"Precision":     macroPrecision,
+				"Recall":        macroRecall,
+				"F1Score":       macroF1,
 				"LastTrained":   time.Now().Format("02 Jan 2006 15:04"),
 			},
-			"Matrix":  matriks,
-			"Classes": modelNB.SemuaKelas,
+			"Matrix":    matriks,
+			"Classes":   modelNB.SemuaKelas,
+			"ErrorUji":  errorUji,
 			"classifier": map[string]interface{}{
 				"ClassNames": classifier.DaftarNamaKelas,
 			},
@@ -623,7 +692,7 @@ func main() {
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
-	// Manajemen User (Routes Tambahan)
+	// Pengaturan Akun (Routes Tambahan)
 	e.POST("/users/simpan", func(c echo.Context) error {
 		nama := c.FormValue("username")
 		sandi := c.FormValue("password")

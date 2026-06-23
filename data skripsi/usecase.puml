@@ -51,7 +51,7 @@ rectangle "Sistem Klasifikasi Kesejahteraan" {
         usecase "Export ke Excel" as UC_Export
     }
     
-    package "6. Manajemen Pengguna" {
+    package "6. Pengaturan Akun" {
         usecase "Kelola Akun Admin" as UC_KelolaAkun
     }
 }

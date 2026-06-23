@@ -3,39 +3,13 @@ Halaman Manajemen Pengguna (users.html)
 Halaman khusus Admin untuk mengelola akun pengguna sistem (Admin / Operator).
 Menyediakan form pendaftaran akun baru, tabel daftar pengguna aktif, serta link Edit dan Hapus pengguna.
 */}}
-{{define "title"}}Manajemen Pengguna{{end}}
-{{define "header"}}Kelola Akun Sistem{{end}}
+{{define "title"}}Pengaturan Akun{{end}}
+{{define "header"}}Pengaturan Akun Admin{{end}}
 
 {{define "content"}}
-<div class="card" style="margin-bottom: 24px;">
-    <h3 style="margin-bottom: 20px;">Tambah Pengguna Baru</h3>
-    <form action="/users/simpan" method="POST">
-        <div class="form-row">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Nama Pengguna</label>
-                <input type="text" name="username" required placeholder="Masukkan nama pengguna">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Kata Sandi</label>
-                <input type="password" name="password" required placeholder="Masukkan kata sandi">
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label>Peran (Role)</label>
-                <select name="role" required>
-                    <option value="" disabled selected>Pilih Peran</option>
-                    <option value="Admin">Admin</option>
-                </select>
-            </div>
-            <div style="display: flex; align-items: flex-end;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Tambah Akun</button>
-            </div>
-        </div>
-    </form>
-</div>
-
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h3>Daftar Pengguna Aktif</h3>
+        <h3>Daftar Akun Pengguna</h3>
     </div>
 
     <table class="table">

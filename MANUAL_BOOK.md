@@ -160,49 +160,43 @@ Setelah diproses, Anda akan melihat:
 
 ---
 
-## ⚙️ Bagian 7: Training Model (Melatih Ulang Sistem)
+## ⚙️ Bagian 7: Training & Evaluasi Model (Melatih Ulang Sistem)
 
-Fitur ini digunakan untuk **memperbarui dan meningkatkan kecerdasan sistem** setelah ada penambahan data baru.
+Fitur ini digunakan untuk **melatih ulang sistem** menggunakan data latih dan **mengevaluasi performanya** menggunakan data uji.
 
-### Kapan Perlu Training Ulang?
-- Setelah menambahkan banyak data warga baru ke sistem
-- Jika hasil klasifikasi terasa kurang akurat
-
-### Cara Training Model:
+### Cara Training dan Evaluasi Model:
 
 1. Klik menu **"Training Model"** di sebelah kiri.
-2. Sistem akan otomatis melatih ulang menggunakan semua data yang bertanda **"Data Latih"**.
-3. Hasil training akan ditampilkan, termasuk:
-   - **Akurasi** — Persentase seberapa tepat sistem dalam menebak kelas yang benar (semakin tinggi semakin baik)
-   - **Confusion Matrix** — Tabel yang menunjukkan detail perbandingan antara tebakan sistem dan jawaban sebenarnya
+2. Sistem akan melatih model menggunakan data bertanda **"Data Latih"** (data_latih = 1).
+3. Setelah model dilatih, sistem akan menguji kemampuannya dengan mengklasifikasikan data bertanda **"Data Uji"** (data_latih = 0) yang memiliki label kelas aktual.
+4. Hasil pengujian dan evaluasi akan ditampilkan secara real-time, yaitu:
+   - **Akurasi, Presisi, Recall, dan F1-Score** — Metrik untuk menilai seberapa baik model memprediksi kelas kesejahteraan yang sebenarnya (diambil dari rata-rata performa model terhadap data uji).
+   - **Confusion Matrix** — Tabel perbandingan 6x6 antara kelas aktual data uji dengan kelas yang diprediksi oleh model.
 
-> ⚠️ **Syarat:** Sistem membutuhkan minimal **60 data latih** (10 data untuk setiap kelas) agar bisa dilatih. Jika kurang dari itu, sistem akan memberikan peringatan.
+> ⚠️ **Syarat:** Sistem membutuhkan minimal **60 data latih** (minimal 10 data untuk setiap kelas) agar proses training dapat dilakukan. Pastikan juga Anda telah mengunggah data uji dengan label kelas aktual untuk melakukan evaluasi performa model.
 
 ---
 
-## 🔑 Bagian 8: Manajemen Pengguna
+## 🔑 Bagian 8: Pengaturan Akun
 
-Fitur ini untuk **mengelola akun-akun yang bisa mengakses sistem**.
+Fitur ini digunakan oleh Admin untuk **mengubah atau menghapus kredensial akun** yang digunakan untuk mengakses sistem. Karena sistem hanya menggunakan satu akun Admin, Anda tidak perlu menambah akun baru.
 
-### Melihat Daftar Pengguna
+### Melihat Informasi Akun
 
-1. Klik menu **"Manajemen User"** di sebelah kiri.
-2. Akan muncul daftar semua akun yang terdaftar.
+1. Klik menu **"Pengaturan Akun"** di sebelah kiri.
+2. Anda akan melihat nama pengguna (username) akun Admin yang aktif.
 
-### Menambah Akun Baru
+### Mengubah Informasi Akun
 
-1. Isi formulir di bagian atas halaman:
-   - **Nama Pengguna** → Username untuk login
-   - **Kata Sandi** → Password untuk login
-   - **Peran** → Pilih "Admin" (saat ini hanya tersedia satu level akses)
-2. Klik **"Tambah Akun"**.
+1. Klik tombol **"Edit"** di sebelah nama akun Admin.
+2. Ubah nama pengguna atau kata sandi jika diperlukan.
+3. Klik **"Simpan Perubahan"**.
 
-### Mengubah atau Menghapus Akun
+### Menghapus Akun
 
-- Klik **"Edit"** untuk mengubah nama pengguna atau password
-- Klik **"Hapus"** untuk menghapus akun yang sudah tidak digunakan
+- Klik **"Hapus"** jika Anda ingin menghapus akun tersebut. Namun, harap berhati-hati karena jika akun dihapus, Anda harus membuat akun baru atau mereset database untuk dapat mengakses sistem kembali.
 
-> 💡 **Tips Keamanan:** Jangan gunakan password yang mudah ditebak seperti "123456" atau "admin". Gunakan kombinasi huruf dan angka.
+> 💡 **Tips Keamanan:** Ganti kata sandi bawaan (`admin123`) setelah pertama kali login. Gunakan kombinasi huruf dan angka yang kuat.
 
 ---
 
@@ -228,7 +222,7 @@ Fitur ini untuk **mengelola akun-akun yang bisa mengakses sistem**.
 A: Ya. Semua data tersimpan di komputer lokal (tidak dikirim ke internet) dan hanya bisa diakses oleh orang yang punya username dan password.
 
 **Q: Bagaimana jika saya lupa password?**
-A: Minta kepada administrator sistem untuk mereset password melalui menu Manajemen User. Atau hubungi pengembang aplikasi.
+A: Jika Anda lupa kata sandi akun Admin tunggal Anda, silakan hubungi pengembang aplikasi untuk mereset kata sandi melalui modifikasi langsung pada file database `data_skripsi.db`.
 
 **Q: Apakah hasil klasifikasi bisa salah?**
 A: Sistem menggunakan metode statistik (Naive Bayes) sehingga hasilnya berupa rekomendasi. Akurasi sistem bergantung pada kualitas data latih yang dimasukkan. Semakin banyak dan akurat data latihnya, semakin tepat rekomendasinya.
@@ -237,7 +231,7 @@ A: Sistem menggunakan metode statistik (Naive Bayes) sehingga hasilnya berupa re
 A: Boleh. Setiap hasil klasifikasi akan tersimpan di riwayat dengan tanggal berbeda. Ini berguna jika kondisi warga berubah dari waktu ke waktu.
 
 **Q: Apa perbedaan "Data Latih" dan "Data Uji"?**
-A: **Data Latih** adalah data warga yang sudah diketahui tingkat kesejahteraannya (digunakan untuk "mengajari" sistem). **Data Uji** adalah warga baru yang kita minta sistem untuk menentukan kelasnya.
+A: **Data Latih** adalah data kependudukan (dengan flag data_latih = 1) yang digunakan oleh algoritma Naive Bayes untuk menghitung probabilitas Prior dan Likelihood. **Data Uji** adalah dataset terpisah (dengan flag data_latih = 0) yang digunakan khusus untuk mengevaluasi performa klasifikasi model (mengukur akurasi, presisi, recall, dan f1-score via Confusion Matrix).
 
 ---
 

@@ -64,11 +64,11 @@ fork again
   endif
 
 fork again
-  :=== MENU: TRAINING MODEL ===;
+  :=== MENU: TRAINING & EVALUASI MODEL ===;
   if (Data latih >= 60\n(min 10 per kelas)?) then (Ya)
-    :Latih ulang model\nNaive Bayes;
-    :Evaluasi dengan\nConfusion Matrix;
-    :Tampilkan akurasi,\npresisi, recall;
+    :Latih ulang model\nNaive Bayes\nmenggunakan data latih;
+    :Evaluasi model\nmenggunakan data uji;
+    :Tampilkan Confusion Matrix,\nakurasi, presisi, recall, F1-Score;
   else (Tidak)
     :Tampilkan peringatan\n"Data latih tidak cukup";
   endif

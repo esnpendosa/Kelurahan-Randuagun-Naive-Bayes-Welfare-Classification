@@ -28,6 +28,7 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 		// Tabel warga untuk menyimpan data kependudukan dan label kesejahteraan
 		`CREATE TABLE IF NOT EXISTS warga (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			idpengguna INTEGER,
 			nik TEXT UNIQUE DEFAULT '',
 			no_kk TEXT DEFAULT '',
 			nama_lengkap TEXT DEFAULT '',
@@ -37,7 +38,8 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 			kelurahan TEXT DEFAULT '',
 			data_latih INTEGER DEFAULT 0,
 			label_kelas TEXT DEFAULT '',
-			dibuat_pada DATETIME DEFAULT CURRENT_TIMESTAMP
+			dibuat_pada DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(idpengguna) REFERENCES pengguna(id)
 		)`,
 		// Tabel data_indikator untuk menyimpan 36 nilai IM/IL per warga
 		`CREATE TABLE IF NOT EXISTS data_indikator (
@@ -63,6 +65,29 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 		if _, err := db.Exec(q); err != nil {
 			return nil, err // Mengembalikan error jika eksekusi query gagal
 		}
+	}
+
+	// Cek apakah kolom idpengguna sudah ada di tabel warga (untuk database lama)
+	var kolomAda bool
+	rows, err := db.Query("PRAGMA table_info(warga)")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var cid int
+			var name, ctype string
+			var notnull, pk int
+			var dflt_value interface{}
+			if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt_value, &pk); err == nil {
+				if name == "idpengguna" {
+					kolomAda = true
+					break
+				}
+			}
+		}
+	}
+	if !kolomAda {
+		// Tambahkan kolom idpengguna jika belum ada
+		db.Exec("ALTER TABLE warga ADD COLUMN idpengguna INTEGER REFERENCES pengguna(id)")
 	}
 
 	return db, nil // Mengembalikan instance database yang siap digunakan
@@ -127,6 +152,59 @@ func AmbilDataLatih(db *sql.DB) ([]DataLatih, error) {
 
 	return daftarData, nil
 }
+
+// AmbilDataUji mengambil semua data dari tabel warga yang ditandai sebagai data_latih = 0 (Data Uji) dan memiliki label_kelas untuk keperluan evaluasi
+func AmbilDataUji(db *sql.DB) ([]DataLatih, error) {
+	// Mengambil data warga yang merupakan data uji dan sudah memiliki label kelas
+	rows, err := db.Query("SELECT id, nama_lengkap, label_kelas FROM warga WHERE data_latih = 0 AND label_kelas != ''")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Map untuk mengubah nama label menjadi ID angka (1-6)
+	labelMap := map[string]int{
+		"Sangat Miskin": 1, "Miskin": 2, "Hampir Miskin": 3,
+		"Rentan Miskin": 4, "Pas-pasan": 5, "Pas-Pasan": 5, "Menengah ke Atas": 6,
+	}
+
+	var daftarData []DataLatih
+	for rows.Next() {
+		var d DataLatih
+		var label string
+		if err := rows.Scan(&d.ID, &d.Nama, &label); err != nil {
+			return nil, err
+		}
+		
+		d.Kelas = labelMap[label] // Konversi label string ke ID kelas
+		if d.Kelas == 0 {
+			fmt.Sscanf(label, "%d", &d.Kelas) // Jika label sudah berupa angka, parse langsung
+		}
+
+		d.Indikator = make(map[string]string)
+		daftarData = append(daftarData, d)
+	}
+
+	// Mengambil 36 indikator untuk setiap warga yang ditemukan
+	for i := range daftarData {
+		irows, err := db.Query("SELECT indikator_id, nilai FROM data_indikator WHERE warga_id = ?", daftarData[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		for irows.Next() {
+			var id, val string
+			if err := irows.Scan(&id, &val); err != nil {
+				irows.Close()
+				return nil, err
+			}
+			daftarData[i].Indikator[strings.ToUpper(id)] = val
+		}
+		irows.Close()
+	}
+
+	return daftarData, nil
+}
+
 
 // TambahWarga memasukkan data kependudukan baru ke database
 func TambahWarga(db *sql.DB, nik, no_kk, nama, alamat, rt, rw, kelurahan string) (int64, error) {

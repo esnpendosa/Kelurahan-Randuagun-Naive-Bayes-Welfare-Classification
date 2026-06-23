@@ -25,6 +25,7 @@ entity "PENGGUNA" as pengguna {
 
 entity "WARGA" as warga {
     * id            : INTEGER <<PK, AUTOINCREMENT>>
+    idpengguna      : INTEGER <<FK>>
     --
     nik             : TEXT UNIQUE
     no_kk           : TEXT

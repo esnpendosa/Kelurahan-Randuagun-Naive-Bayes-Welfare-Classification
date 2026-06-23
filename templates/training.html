@@ -15,6 +15,13 @@ Akurasi, Presisi, Recall, F1-Score, serta visualisasi tabel Confusion Matrix ber
 </div>
 {{end}}
 
+{{if .ErrorUji}}
+<div class="card" style="background: #fffbeb; border-color: #fde68a; margin-bottom: 24px;">
+    <p style="color: #9a3412; font-weight: 600;">Peringatan Evaluasi:</p>
+    <p style="font-size: 0.875rem; color: #9a3412; margin-top: 8px;">{{.ErrorUji}}</p>
+</div>
+{{end}}
+
 <div class="grid" style="grid-template-columns: 1fr 2fr;">
     <div class="card">
         <h3 style="margin-bottom: 24px;">Kontrol Pelatihan</h3>
@@ -24,7 +31,8 @@ Akurasi, Presisi, Recall, F1-Score, serta visualisasi tabel Confusion Matrix ber
         </div>
         <a href="/training" class="btn btn-primary" style="width: 100%; padding: 16px;">Mulai Pelatihan Ulang</a>
         <p style="margin-top: 16px; font-size: 0.875rem;">Total Data Latih: <strong>{{.Stats.TotalTraining}}</strong></p>
-        <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">Sistem akan menghitung ulang peluang Prior dan Likelihood berdasarkan data warga terbaru.</p>
+        <p style="margin-top: 8px; font-size: 0.875rem;">Total Data Uji Evaluasi: <strong>{{.Stats.TotalTesting}}</strong></p>
+        <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">Sistem akan melatih model dengan Data Latih, lalu menguji performanya menggunakan Data Uji.</p>
     </div>
 
     <div class="card">
@@ -36,15 +44,15 @@ Akurasi, Presisi, Recall, F1-Score, serta visualisasi tabel Confusion Matrix ber
             </div>
             <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
                 <p style="font-size: 0.75rem; color: var(--text-muted);">Presisi</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">0.90</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Precision}}</p>
             </div>
             <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
                 <p style="font-size: 0.75rem; color: var(--text-muted);">Recall</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">0.88</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Recall}}</p>
             </div>
             <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
                 <p style="font-size: 0.75rem; color: var(--text-muted);">F1-Score</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">0.89</p>
+                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.F1Score}}</p>
             </div>
         </div>
     </div>
