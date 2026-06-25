@@ -223,54 +223,49 @@ func main() {
 	e.GET("/", func(c echo.Context) error {
 		var jumlahWarga int
 		dbSistem.QueryRow("SELECT COUNT(*) FROM warga").Scan(&jumlahWarga)
-		
 		var jumlahKlasifikasi int
 		dbSistem.QueryRow("SELECT COUNT(*) FROM hasil_klasifikasi").Scan(&jumlahKlasifikasi)
+		var jumlahLatih int
+		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih)
 
-		// Mengambil distribusi data training per kelas untuk grafik
+		// Distribusi per kelas dari seluruh data (latih + uji yang punya label)
 		rows, _ := dbSistem.Query(`
-			SELECT label_kelas, COUNT(*) as jml 
-			FROM warga 
-			WHERE data_latih = 1 
+			SELECT label_kelas, COUNT(*) as jml
+			FROM warga
+			WHERE label_kelas != ''
 			GROUP BY label_kelas
+			ORDER BY jml DESC
 		`)
 		defer rows.Close()
-
 		distribusi := []map[string]interface{}{}
-		totalLatih := 0
+		totalLabel := 0
 		for rows.Next() {
-			var label string
-			var jml int
+			var label string; var jml int
 			rows.Scan(&label, &jml)
-			distribusi = append(distribusi, map[string]interface{}{
-				"Label": label,
-				"Count": jml,
-			})
-			totalLatih += jml
+			distribusi = append(distribusi, map[string]interface{}{"Label": label, "Count": jml})
+			totalLabel += jml
 		}
-		// Hitung persentase untuk setiap kategori
 		for i := range distribusi {
-			distribusi[i]["Percent"] = (float64(distribusi[i]["Count"].(int)) / float64(totalLatih)) * 100
+			pct := 0.0
+			if totalLabel > 0 { pct = float64(distribusi[i]["Count"].(int)) / float64(totalLabel) * 100 }
+			distribusi[i]["Percent"] = pct
 		}
+		distJSON, _ := json.Marshal(distribusi)
 
 		data := map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Stats": map[string]interface{}{
 				"TotalWarga":       jumlahWarga,
 				"TotalKlasifikasi": jumlahKlasifikasi,
-				"Accuracy":         90.0, 
+				"TotalLatih":       jumlahLatih,
 			},
-			"Distribusi": distribusi,
+			"DistribusiKategori": distribusi,
+			"DistribusiJSON": string(distJSON),
 			"Aktivitas": []map[string]interface{}{
 				{"Aksi": "Sistem Klasifikasi Naive Bayes siap digunakan", "Waktu": "Baru saja"},
-				{"Aksi": "Database kependudukan diperbarui", "Waktu": "3 menit yang lalu"},
+				{"Aksi": "Database kependudukan diperbarui", "Waktu": "Baru saja"},
 			},
 		}
-
-		// Marshal Distribusi ke JSON untuk injeksi JS yang aman via DOM
-		distJSON, _ := json.Marshal(distribusi)
-		data["DistribusiJSON"] = string(distJSON)
-
 		return c.Render(http.StatusOK, "index.html", data)
 	}, middlewareAutentikasi)
 
@@ -330,7 +325,6 @@ func main() {
 			var nik, nama string
 			rows.Scan(&id, &nik, &nama, &isLatih)
 			label := nama
-			if isLatih == 1 { label += " (Data Latih)" }
 			pilihanWarga = append(pilihanWarga, map[string]interface{}{
 				"ID":       id,
 				"NIK":      nik,
@@ -429,153 +423,199 @@ func main() {
 		return c.Render(http.StatusOK, "users.html", data)
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
-	// Training Model Naive Bayes (Khusus Admin)
+	// Training Model - halaman utama (hanya lihat data)
 	e.GET("/training", func(c echo.Context) error {
 		dataLatih, _ := db.AmbilDataLatih(dbSistem)
-		
-		// Cek syarat minimal data (10 data per kelas x 6 kelas)
-		if len(dataLatih) < 60 {
-			return c.Render(http.StatusOK, "training.html", map[string]interface{}{
-				"User": ambilDataPengguna(c),
-				"Error": "Data latih tidak mencukupi. Minimal dibutuhkan 60 data (10 per kelas).",
-				"Stats": map[string]interface{}{
-					"TotalTraining": len(dataLatih), 
-					"TotalTesting":  0,
-					"Accuracy":      0.0,
-					"Precision":     0.0,
-					"Recall":        0.0,
-					"F1Score":       0.0,
-					"LastTrained":   "Belum pernah",
-				},
-				"Matrix":  make(map[int]map[int]int),
-				"Classes": []int{},
-				"classifier": map[string]interface{}{
-					"ClassNames": classifier.DaftarNamaKelas,
-				},
+		dataUji, _ := db.AmbilDataUji(dbSistem)
+
+		// Distribusi data latih per kelas
+		distLatihMap := make(map[string]int)
+		for _, d := range dataLatih { distLatihMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		distUjiMap := make(map[string]int)
+		for _, d := range dataUji { distUjiMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+
+		urutan := []string{"Sangat Miskin","Miskin","Hampir Miskin","Rentan Miskin","Pas-pasan","Menengah ke Atas"}
+		var distLatih, distUji []map[string]interface{}
+		for _, nama := range urutan {
+			jml := distLatihMap[nama]
+			pct := 0.0; if len(dataLatih)>0 { pct = float64(jml)/float64(len(dataLatih))*100 }
+			distLatih = append(distLatih, map[string]interface{}{"Label":nama,"Count":jml,"Percent":pct})
+			jmlU := distUjiMap[nama]
+			pctU := 0.0; if len(dataUji)>0 { pctU = float64(jmlU)/float64(len(dataUji))*100 }
+			distUji = append(distUji, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
+		}
+
+		// Semua warga untuk tab dinamis
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih FROM warga ORDER BY id ASC")
+		defer rows2.Close()
+		var semuaWarga []map[string]interface{}
+		for rows2.Next() {
+			var id, isLatih int; var nik, nama string
+			rows2.Scan(&id, &nik, &nama, &isLatih)
+			semuaWarga = append(semuaWarga, map[string]interface{}{
+				"ID":"" + fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih==1,
 			})
 		}
 
-		// Jalankan proses training ulang secara real-time
-		modelNB = classifier.BuatModelBaru()
-		modelNB.DaftarFitur = namaFitur
-		var in []map[string]string
-		var tg []classifier.KelasKesejahteraan
-		for _, dl := range dataLatih {
-			in = append(in, dl.Indikator)
-			tg = append(tg, classifier.KelasKesejahteraan(dl.Kelas))
-		}
-		modelNB.LatihModel(in, tg)
+		var jumlahLatih2 int
+		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih2)
 
-		// Mengambil data uji dari database
-		dataUji, _ := db.AmbilDataUji(dbSistem)
-
-		// Evaluasi Model menggunakan Confusion Matrix 6x6 terhadap Data Uji
-		benar := 0
-		total := 0
-		matriks := make(map[classifier.KelasKesejahteraan]map[classifier.KelasKesejahteraan]int)
-		for _, k1 := range modelNB.SemuaKelas {
-			matriks[k1] = make(map[classifier.KelasKesejahteraan]int)
-		}
-
-		for _, du := range dataUji {
-			p := modelNB.Prediksi(du.Indikator)
-			pred := modelNB.AmbilKelasTerbaik(p)
-			aktual := classifier.KelasKesejahteraan(du.Kelas)
-			
-			// Pastikan map untuk baris aktual sudah diinisialisasi
-			if matriks[aktual] == nil {
-				matriks[aktual] = make(map[classifier.KelasKesejahteraan]int)
-			}
-			matriks[aktual][pred]++
-			
-			if aktual == pred { benar++ }
-			total++
-		}
-
-		akurasi := 0.0
-		if total > 0 {
-			akurasi = float64(benar) / float64(total)
-		}
-
-		// Hitung Precision, Recall, dan F1-Score (Macro Average)
-		var totalPrecision, totalRecall, totalF1 float64
-		var classCount float64
-
-		for _, k := range modelNB.SemuaKelas {
-			tp := float64(matriks[k][k])
-			
-			var fp float64
-			for _, actualClass := range modelNB.SemuaKelas {
-				if actualClass != k {
-					fp += float64(matriks[actualClass][k])
-				}
-			}
-
-			var fn float64
-			for _, predClass := range modelNB.SemuaKelas {
-				if predClass != k {
-					fn += float64(matriks[k][predClass])
-				}
-			}
-
-			precision := 0.0
-			if tp+fp > 0 {
-				precision = tp / (tp + fp)
-			}
-
-			recall := 0.0
-			if tp+fn > 0 {
-				recall = tp / (tp + fn)
-			}
-
-			f1 := 0.0
-			if precision+recall > 0 {
-				f1 = 2 * (precision * recall) / (precision + recall)
-			}
-
-			totalPrecision += precision
-			totalRecall += recall
-			totalF1 += f1
-			classCount++
-		}
-
-		macroPrecision := 0.0
-		macroRecall := 0.0
-		macroF1 := 0.0
-		if classCount > 0 {
-			macroPrecision = totalPrecision / classCount
-			macroRecall = totalRecall / classCount
-			macroF1 = totalF1 / classCount
-		}
-
-		var errorUji string
-		if len(dataUji) == 0 {
-			errorUji = "Data uji tidak ditemukan atau tidak memiliki label kelas di database. Silakan import atau masukkan data warga dengan kategori Data Uji (data_latih = 0) beserta label kelas aktualnya."
-		}
-
-		fmt.Printf("Evaluasi selesai: %d data uji, Akurasi: %.2f%%\n", total, akurasi*100)
-
-		data := map[string]interface{}{
+		return c.Render(http.StatusOK, "training.html", map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Stats": map[string]interface{}{
 				"TotalTraining": len(dataLatih),
 				"TotalTesting":  len(dataUji),
-				"Accuracy":      akurasi * 100,
-				"Precision":     macroPrecision,
-				"Recall":        macroRecall,
-				"F1Score":       macroF1,
-				"LastTrained":   time.Now().Format("02 Jan 2006 15:04"),
+				"TotalTraining2": jumlahLatih2,
+				"LastTrained": "-",
 			},
-			"Matrix":    matriks,
-			"Classes":   modelNB.SemuaKelas,
-			"ErrorUji":  errorUji,
-			"classifier": map[string]interface{}{
-				"ClassNames": classifier.DaftarNamaKelas,
-			},
-		}
-		fmt.Println("Merender template training.html...")
-		return c.Render(http.StatusOK, "training.html", data)
+			"DistribusiLatih": distLatih,
+			"DistribusiUji":   distUji,
+			"SemuaWarga":      semuaWarga,
+			"HasResult":       false,
+			"classifier": map[string]interface{}{"ClassNames": classifier.DaftarNamaKelas},
+		})
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// Training Model - Proses Hitung & Evaluasi (POST)
+	e.POST("/training/proses", func(c echo.Context) error {
+		modelDipilih := c.FormValue("model") // training1 atau training2
+		filterKelas := c.FormValue("filter_kelas")
+		_ = modelDipilih
+
+		dataLatih, _ := db.AmbilDataLatih(dbSistem)
+		dataUji, _ := db.AmbilDataUji(dbSistem)
+
+		// Filter kelas jika dipilih
+		if filterKelas != "" {
+			var filtered []db.DataLatih
+			for _, d := range dataLatih {
+				if classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)] == filterKelas { filtered = append(filtered, d) }
+			}
+			dataLatih = filtered
+		}
+
+		if len(dataLatih) < 2 {
+			return c.Redirect(http.StatusSeeOther, "/training")
+		}
+
+		// Latih model
+		modelNB = classifier.BuatModelBaru()
+		modelNB.DaftarFitur = namaFitur
+		var in []map[string]string; var tg []classifier.KelasKesejahteraan
+		for _, dl := range dataLatih { in = append(in, dl.Indikator); tg = append(tg, classifier.KelasKesejahteraan(dl.Kelas)) }
+		modelNB.LatihModel(in, tg)
+
+		// Evaluasi
+		benar, total := 0, 0
+		matriks := make(map[classifier.KelasKesejahteraan]map[classifier.KelasKesejahteraan]int)
+		for _, k1 := range modelNB.SemuaKelas { matriks[k1] = make(map[classifier.KelasKesejahteraan]int) }
+		for _, du := range dataUji {
+			p := modelNB.Prediksi(du.Indikator)
+			pred := modelNB.AmbilKelasTerbaik(p)
+			aktual := classifier.KelasKesejahteraan(du.Kelas)
+			if matriks[aktual] == nil { matriks[aktual] = make(map[classifier.KelasKesejahteraan]int) }
+			matriks[aktual][pred]++
+			if aktual == pred { benar++ }
+			total++
+		}
+		akurasi := 0.0; if total > 0 { akurasi = float64(benar) / float64(total) }
+
+		var totP, totR, totF1, cnt float64
+		for _, k := range modelNB.SemuaKelas {
+			tp := float64(matriks[k][k])
+			var fp, fn float64
+			for _, ac := range modelNB.SemuaKelas { if ac != k { fp += float64(matriks[ac][k]) } }
+			for _, pc := range modelNB.SemuaKelas { if pc != k { fn += float64(matriks[k][pc]) } }
+			pr := 0.0; if tp+fp > 0 { pr = tp / (tp + fp) }
+			rc := 0.0; if tp+fn > 0 { rc = tp / (tp + fn) }
+			f1 := 0.0; if pr+rc > 0 { f1 = 2 * pr * rc / (pr + rc) }
+			totP += pr; totR += rc; totF1 += f1; cnt++
+		}
+		if cnt == 0 { cnt = 1 }
+
+		urutan := []string{"Sangat Miskin","Miskin","Hampir Miskin","Rentan Miskin","Pas-pasan","Menengah ke Atas"}
+		distLatihMap := make(map[string]int)
+		for _, d := range dataLatih { distLatihMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		distUjiMap := make(map[string]int)
+		for _, d := range dataUji { distUjiMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		var distLatih, distUji []map[string]interface{}
+		for _, nama := range urutan {
+			jml := distLatihMap[nama]; pct := 0.0; if len(dataLatih)>0 { pct = float64(jml)/float64(len(dataLatih))*100 }
+			distLatih = append(distLatih, map[string]interface{}{"Label":nama,"Count":jml,"Percent":pct})
+			jmlU := distUjiMap[nama]; pctU := 0.0; if len(dataUji)>0 { pctU = float64(jmlU)/float64(len(dataUji))*100 }
+			distUji = append(distUji, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
+		}
+
+		// Semua warga tab dinamis
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih FROM warga ORDER BY id ASC")
+		defer rows2.Close()
+		var semuaWarga []map[string]interface{}
+		for rows2.Next() {
+			var id, isLatih int; var nik, nama string
+			rows2.Scan(&id, &nik, &nama, &isLatih)
+			semuaWarga = append(semuaWarga, map[string]interface{}{
+				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih==1,
+			})
+		}
+
+		modelLabel := "Data Training 1"
+		if modelDipilih == "training2" { modelLabel = "Data Training 2" }
+		if filterKelas != "" { modelLabel += " (filter: " + filterKelas + ")" }
+
+		errorUji := ""
+		if len(dataUji) == 0 { errorUji = "Data uji tidak ditemukan. Pastikan ada data dengan data_latih=0 dan label_kelas terisi." }
+
+		var jumlahLatih2 int
+		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih2)
+
+		return c.Render(http.StatusOK, "training.html", map[string]interface{}{
+			"User": ambilDataPengguna(c),
+			"Stats": map[string]interface{}{
+				"TotalTraining":  len(dataLatih),
+				"TotalTesting":   len(dataUji),
+				"TotalTraining2": jumlahLatih2,
+				"Accuracy":       akurasi * 100,
+				"Precision":      totP / cnt,
+				"Recall":         totR / cnt,
+				"F1Score":        totF1 / cnt,
+				"LastTrained":    time.Now().Format("02 Jan 2006 15:04"),
+			},
+			"Matrix":          matriks,
+			"Classes":         modelNB.SemuaKelas,
+			"ErrorUji":        errorUji,
+			"HasResult":       true,
+			"ModelDipakai":    modelLabel,
+			"DistribusiLatih": distLatih,
+			"DistribusiUji":   distUji,
+			"SemuaWarga":      semuaWarga,
+			"classifier": map[string]interface{}{"ClassNames": classifier.DaftarNamaKelas},
+		})
+	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// Set Peran Warga (training/uji) - Dinamis
+	e.POST("/warga/set-peran", func(c echo.Context) error {
+		id := c.FormValue("id")
+		peran := c.FormValue("peran")
+		isLatih := 0
+		if peran == "latih" { isLatih = 1 }
+		dbSistem.Exec("UPDATE warga SET data_latih = ? WHERE id = ?", isLatih, id)
+		return c.Redirect(http.StatusSeeOther, "/training")
+	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// API: Ambil data indikator warga berdasarkan ID (untuk auto-fill klasifikasi)
+	e.GET("/api/indikator/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		rows, err := dbSistem.Query("SELECT indikator_id, nilai FROM data_indikator WHERE warga_id = ?", id)
+		if err != nil { return c.JSON(http.StatusOK, map[string]string{}) }
+		defer rows.Close()
+		hasil := make(map[string]string)
+		for rows.Next() {
+			var indId, nilai string
+			rows.Scan(&indId, &nilai)
+			hasil[indId] = nilai
+		}
+		return c.JSON(http.StatusOK, hasil)
+	}, middlewareAutentikasi)
 
 	// Laporan Rekapitulasi (Bisa diakses Admin & Operator)
 	e.GET("/laporan", func(c echo.Context) error {

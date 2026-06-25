@@ -1,47 +1,51 @@
-{{/* 
+{{/*
 Halaman Klasifikasi Baru
-Template ini digunakan untuk menginput data dari 36 indikator kemiskinan warga.
-Data dikelompokkan berdasarkan Section (Kondisi Rumah, Ekonomi Keluarga, Aset & Fasilitas).
+Data warga yang sudah ada di database otomatis terisi indikatornya.
+Data baru bisa dipilih sebagai data training atau data uji secara dinamis.
 */}}
-
 {{define "title"}}Klasifikasi Baru{{end}}
 {{define "header"}}Input Data Klasifikasi Kesejahteraan{{end}}
 
 {{define "content"}}
-<!-- Form untuk mengirimkan data klasifikasi ke endpoint /klasifikasi/proses -->
 <form action="/klasifikasi/proses" method="POST">
-    <!-- Bagian 1: Memilih warga yang akan diklasifikasikan -->
+    <!-- Bagian 1: Pilih Warga -->
     <div class="card" style="margin-bottom: 24px;">
         <h3 style="margin-bottom: 20px;">1. Pilih Data Warga</h3>
-        <div class="form-group" style="max-width: 400px;">
-            <label>Cari Nama atau NIK Warga</label>
-            <!-- Dropdown pilihan warga -->
-            <select name="resident_id" required style="font-size: 1rem; padding: 12px;">
-                <option value="" disabled {{if not .SelectedID}}selected{{end}}>--- Pilih Warga ---</option>
-                {{range .Warga}}
-                <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.NIK}} - {{.NamaKK}}</option>
-                {{end}}
-            </select>
+        <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:1; min-width:300px;">
+                <label>Cari Nama atau NIK Warga</label>
+                <select name="resident_id" id="pilihWarga" required style="font-size:1rem; padding:12px; margin-top:8px;"
+                    onchange="muatDataIndikator(this.value)">
+                    <option value="" disabled {{if not .SelectedID}}selected{{end}}>--- Pilih Warga ---</option>
+                    {{range .Warga}}
+                    <option value="{{.ID}}" {{if .Selected}}selected{{end}}>{{.NIK}} - {{.NamaKK}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div id="status-indikator" style="padding:10px 16px; border-radius:8px; font-size:0.82rem; background:#f1f5f9; color:var(--text-muted); display:none;">
+                ⏳ Memuat data indikator...
+            </div>
         </div>
+        <p style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">
+            ℹ️ Jika warga sudah pernah memiliki data indikator, formulir di bawah akan terisi otomatis.
+        </p>
     </div>
 
-    <!-- Bagian 2: Menampilkan 36 indikator yang dikelompokkan per bagian -->
+    <!-- Bagian 2: Indikator per Bagian -->
     {{range .Sections}}
     <div class="card" style="margin-bottom: 24px;">
-        <h3 style="margin-bottom: 20px; color: var(--primary);">2. {{.Name}}</h3>
+        <h3 style="margin-bottom: 20px; color: var(--primary);">{{.Name}}</h3>
         <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
             {{range .Indicators}}
             <div class="form-group">
-                <!-- Label untuk kode indikator (misal: IM1, IM2) dan deskripsi indikator -->
                 <label style="margin-bottom: 12px; display: block; line-height: 1.4;">{{.ID}}. {{.Label}}</label>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                    {{/* Menyimpan ID indikator ke variabel agar dapat diakses dari dalam loop pilihan */}}
                     {{$indicatorID := .ID}}
                     {{range .Pilihan}}
-                    <!-- Opsi jawaban radio button -->
                     <label style="font-weight: 400; display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                        <!-- name diatur ke $indicatorID (misal: IM1) agar nilainya dikelompokkan per pertanyaan -->
-                        <input type="radio" name="{{$indicatorID}}" value="{{.Kode}}" required style="width: auto;">
+                        <input type="radio" name="{{$indicatorID}}" value="{{.Kode}}"
+                            class="ind-radio" data-ind="{{$indicatorID}}"
+                            style="width: auto;">
                         <span>{{.Ket}}</span>
                     </label>
                     {{end}}
@@ -52,10 +56,70 @@ Data dikelompokkan berdasarkan Section (Kondisi Rumah, Ekonomi Keluarga, Aset & 
     </div>
     {{end}}
 
-    <!-- Tombol aksi untuk mereset form atau memulai perhitungan Naive Bayes -->
-    <div class="card" style="display: flex; justify-content: flex-end; gap: 16px;">
-        <button type="reset" class="btn btn-secondary">Bersihkan Form</button>
-        <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 1rem;">Mulai Proses Klasifikasi</button>
+    <!-- Bagian 3: Tombol Aksi -->
+    <div class="card" style="display: flex; justify-content: space-between; align-items:center; gap: 16px; flex-wrap:wrap;">
+        <div style="font-size:0.82rem; color:var(--text-muted);" id="info-auto-isi"></div>
+        <div style="display:flex; gap:12px;">
+            <button type="reset" class="btn btn-secondary" onclick="resetForm()">Bersihkan Form</button>
+            <button type="submit" class="btn btn-primary" style="padding: 12px 32px; font-size: 1rem;">Mulai Proses Klasifikasi</button>
+        </div>
     </div>
 </form>
+
+<script>
+// Data indikator dari server (akan diisi via AJAX)
+let dataIndikatorWarga = {};
+
+function muatDataIndikator(wargaId) {
+    if (!wargaId) return;
+    const statusEl = document.getElementById('status-indikator');
+    statusEl.style.display = 'block';
+    statusEl.textContent = '⏳ Memuat data indikator...';
+    statusEl.style.background = '#fffbeb';
+    statusEl.style.color = '#92400e';
+
+    fetch('/api/indikator/' + wargaId)
+        .then(r => r.json())
+        .then(data => {
+            if (data && Object.keys(data).length > 0) {
+                // Isi radio button sesuai data dari DB
+                let terisi = 0;
+                Object.entries(data).forEach(([indId, nilai]) => {
+                    const radio = document.querySelector(
+                        `input[type="radio"][name="${indId}"][value="${nilai}"]`
+                    );
+                    if (radio) { radio.checked = true; terisi++; }
+                });
+                statusEl.textContent = `✅ ${terisi} indikator terisi otomatis dari database.`;
+                statusEl.style.background = '#f0fdf4';
+                statusEl.style.color = '#166534';
+                document.getElementById('info-auto-isi').textContent =
+                    `✅ Data indikator berhasil diisi otomatis (${terisi} indikator dari database).`;
+            } else {
+                statusEl.textContent = '📝 Data indikator belum ada. Silakan isi formulir secara manual.';
+                statusEl.style.background = '#eff6ff';
+                statusEl.style.color = '#1e40af';
+                document.getElementById('info-auto-isi').textContent = '';
+            }
+        })
+        .catch(() => {
+            statusEl.textContent = '⚠️ Gagal memuat data. Silakan isi manual.';
+            statusEl.style.background = '#fee2e2';
+            statusEl.style.color = '#991b1b';
+        });
+}
+
+function resetForm() {
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+    document.getElementById('status-indikator').style.display = 'none';
+    document.getElementById('info-auto-isi').textContent = '';
+    document.getElementById('pilihWarga').value = '';
+}
+
+// Jika ada warga yang sudah dipilih saat halaman dibuka, muat datanya
+window.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('pilihWarga');
+    if (sel.value) muatDataIndikator(sel.value);
+});
+</script>
 {{end}}

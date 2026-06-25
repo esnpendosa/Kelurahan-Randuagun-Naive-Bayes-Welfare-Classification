@@ -1,105 +1,242 @@
-{{/*
-Halaman Pelatihan Model & Evaluasi (training.html)
-Halaman ini digunakan oleh Admin untuk melatih ulang model Naive Bayes (menghitung probabilitas Prior 
-dan Likelihood baru) menggunakan data latih terbaru. Menampilkan metrik performa model seperti 
-Akurasi, Presisi, Recall, F1-Score, serta visualisasi tabel Confusion Matrix berukuran 6x6.
-*/}}
-{{define "title"}}Pelatihan Model{{end}}
-{{define "header"}}Evaluasi Algoritma Naive Bayes{{end}}
+{{define "title"}}Training Model{{end}}
+{{define "header"}}Pelatihan Model Naive Bayes{{end}}
 
 {{define "content"}}
 {{if .Error}}
 <div class="card" style="background: #fee2e2; border-color: #fecaca; margin-bottom: 24px;">
     <p style="color: #991b1b; font-weight: 600;">{{.Error}}</p>
-    <p style="font-size: 0.875rem; color: #991b1b; margin-top: 8px;">Jumlah data saat ini: <strong>{{.Stats.TotalTraining}}</strong> data kependudukan.</p>
+    <p style="font-size: 0.875rem; color: #991b1b; margin-top: 8px;">Jumlah data saat ini: <strong>{{.Stats.TotalTraining}}</strong> data.</p>
 </div>
 {{end}}
 
-{{if .ErrorUji}}
-<div class="card" style="background: #fffbeb; border-color: #fde68a; margin-bottom: 24px;">
-    <p style="color: #9a3412; font-weight: 600;">Peringatan Evaluasi:</p>
-    <p style="font-size: 0.875rem; color: #9a3412; margin-top: 8px;">{{.ErrorUji}}</p>
-</div>
-{{end}}
-
-<div class="grid" style="grid-template-columns: 1fr 2fr;">
-    <div class="card">
-        <h3 style="margin-bottom: 24px;">Kontrol Pelatihan</h3>
-        <div style="background: var(--primary-light); padding: 16px; border-radius: var(--radius); margin-bottom: 24px;">
-            <p style="font-size: 0.875rem; color: var(--primary-dark); font-weight: 600;">Status: Model Aktif</p>
-            <p style="font-size: 0.75rem; color: var(--primary-dark);">Terakhir dilatih: {{.Stats.LastTrained}}</p>
-        </div>
-        <a href="/training" class="btn btn-primary" style="width: 100%; padding: 16px;">Mulai Pelatihan Ulang</a>
-        <p style="margin-top: 16px; font-size: 0.875rem;">Total Data Latih: <strong>{{.Stats.TotalTraining}}</strong></p>
-        <p style="margin-top: 8px; font-size: 0.875rem;">Total Data Uji Evaluasi: <strong>{{.Stats.TotalTesting}}</strong></p>
-        <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">Sistem akan melatih model dengan Data Latih, lalu menguji performanya menggunakan Data Uji.</p>
-    </div>
-
-    <div class="card">
-        <h3 style="margin-bottom: 24px;">Metrik Performa Model</h3>
-        <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px;">
-            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
-                <p style="font-size: 0.75rem; color: var(--text-muted);">Akurasi</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Accuracy}}%</p>
-            </div>
-            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
-                <p style="font-size: 0.75rem; color: var(--text-muted);">Presisi</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Precision}}</p>
-            </div>
-            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
-                <p style="font-size: 0.75rem; color: var(--text-muted);">Recall</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.Recall}}</p>
-            </div>
-            <div style="text-align: center; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
-                <p style="font-size: 0.75rem; color: var(--text-muted);">F1-Score</p>
-                <p style="font-size: 1.25rem; font-weight: 700;">{{printf "%.2f" .Stats.F1Score}}</p>
-            </div>
-        </div>
-    </div>
+<!-- TAB NAVIGATION -->
+<div style="display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:24px;">
+    <button class="tab-btn active" onclick="switchTab('tab1',this)" style="padding:10px 24px; border:none; background:none; font-weight:600; color:var(--primary); border-bottom:2px solid var(--primary); cursor:pointer;">Data Training 1 &amp; Uji 1</button>
+    <button class="tab-btn" onclick="switchTab('tab2',this)" style="padding:10px 24px; border:none; background:none; font-weight:500; color:var(--text-muted); cursor:pointer;">Data Training 2 &amp; Uji 2 (Dinamis)</button>
+    <button class="tab-btn" onclick="switchTab('tab3',this)" style="padding:10px 24px; border:none; background:none; font-weight:500; color:var(--text-muted); cursor:pointer;">Proses &amp; Evaluasi</button>
 </div>
 
-<div class="card">
-    <h3 style="margin-bottom: 24px;">Confusion Matrix (6x6)</h3>
-    <div style="overflow-x: auto;">
-        <table class="matrix" style="width: auto; margin: 0 auto; border: 1px solid var(--border);">
+<!-- TAB 1: DATA TRAINING 1 + UJI 1 (View Only) -->
+<div id="tab1" class="tab-panel">
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div class="card">
+            <h3 style="margin-bottom:16px; color:var(--primary);">Data Training 1</h3>
+            <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:12px;">Total: <strong style="color:var(--primary); font-size:1.25rem;">{{.Stats.TotalTraining}}</strong> data latih</p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                {{range .DistribusiLatih}}
+                <div style="padding:8px 14px; background:var(--primary-light); border-radius:8px; font-size:0.8rem;">
+                    <span style="font-weight:700; color:var(--primary-dark);">{{.Label}}</span>
+                    <span style="color:var(--text-muted); margin-left:6px;">{{.Count}} data</span>
+                </div>
+                {{end}}
+            </div>
+            <table style="width:100%; margin-top:16px; font-size:0.8rem;" class="matrix">
+                <thead><tr><th style="text-align:left; background:#f8fafc;">Kategori</th><th style="background:#f8fafc;">Jumlah</th><th style="background:#f8fafc;">%</th></tr></thead>
+                <tbody>
+                {{range .DistribusiLatih}}
+                <tr>
+                    <td style="text-align:left; font-weight:600;">{{.Label}}</td>
+                    <td style="text-align:center;">{{.Count}}</td>
+                    <td style="text-align:center;">{{printf "%.1f" .Percent}}%</td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom:16px; color:#0891b2;">Data Uji 1</h3>
+            <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:12px;">Total: <strong style="color:#0891b2; font-size:1.25rem;">{{.Stats.TotalTesting}}</strong> data uji</p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                {{range .DistribusiUji}}
+                <div style="padding:8px 14px; background:#e0f2fe; border-radius:8px; font-size:0.8rem;">
+                    <span style="font-weight:700; color:#0c4a6e;">{{.Label}}</span>
+                    <span style="color:var(--text-muted); margin-left:6px;">{{.Count}} data</span>
+                </div>
+                {{end}}
+            </div>
+            <table style="width:100%; margin-top:16px; font-size:0.8rem;" class="matrix">
+                <thead><tr><th style="text-align:left; background:#f8fafc;">Kategori</th><th style="background:#f8fafc;">Jumlah</th><th style="background:#f8fafc;">%</th></tr></thead>
+                <tbody>
+                {{range .DistribusiUji}}
+                <tr>
+                    <td style="text-align:left; font-weight:600;">{{.Label}}</td>
+                    <td style="text-align:center;">{{.Count}}</td>
+                    <td style="text-align:center;">{{printf "%.1f" .Percent}}%</td>
+                </tr>
+                {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+        <p style="font-size:0.85rem; color:#166534;">&#8505; Halaman ini hanya menampilkan data. Proses pelatihan dilakukan di tab <strong>Proses &amp; Evaluasi</strong>.</p>
+    </div>
+</div>
+
+<!-- TAB 2: DATA TRAINING 2 + UJI 2 (Dinamis) -->
+<div id="tab2" class="tab-panel" style="display:none;">
+    <div class="card" style="margin-bottom:20px;">
+        <h3 style="margin-bottom:16px;">Kelola Data Training 2 &amp; Uji 2 (Dinamis)</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;">Data baru yang ditambahkan dapat dikategorikan sebagai Data Training 2 atau Data Uji 2 secara dinamis.</p>
+
+        <div style="overflow-x:auto;">
+        <table class="matrix" style="width:100%; font-size:0.82rem;">
             <thead>
                 <tr>
-                    <th style="background: #f8fafc;">Aktual \ Prediksi</th>
-                    {{range .Classes}}
-                    <th style="background: #f8fafc;">C{{.}}</th>
-                    {{end}}
+                    <th style="text-align:left; background:#f8fafc;">Nama</th>
+                    <th style="text-align:left; background:#f8fafc;">NIK</th>
+                    <th style="background:#f8fafc;">Kategori Saat Ini</th>
+                    <th style="background:#f8fafc;">Ubah Peran</th>
                 </tr>
             </thead>
             <tbody>
-                {{$matrix := .Matrix}}
-                {{$classes := .Classes}}
-                {{$names := .classifier.ClassNames}}
-                {{range $actual := $classes}}
-                <tr>
-                    <td style="font-weight: 600; background: #f8fafc; text-align: left;">C{{$actual}} ({{index $names $actual}})</td>
-                    {{range $pred := $classes}}
-                    {{$row := index $matrix $actual}}
-                    {{$val := 0}}
-                    {{if $row}}
-                        {{$val = index $row $pred}}
+            {{range .SemuaWarga}}
+            <tr>
+                <td style="text-align:left; font-weight:600;">{{.NamaKK}}</td>
+                <td style="font-family:monospace; font-size:0.75rem;">{{.NIK}}</td>
+                <td style="text-align:center;">
+                    {{if .IsTraining}}
+                    <span style="padding:3px 10px; border-radius:12px; font-size:0.75rem; background:#dcfce7; color:#166534; font-weight:600;">Data Latih</span>
+                    {{else}}
+                    <span style="padding:3px 10px; border-radius:12px; font-size:0.75rem; background:#dbeafe; color:#1e40af; font-weight:600;">Data Uji</span>
                     {{end}}
-                    <td {{if and (eq $actual $pred) (gt $val 0)}}style="background: #ccfbf1; font-weight: 700;"{{end}}>
-                        {{$val}}
-                    </td>
-                    {{end}}
-                </tr>
-                {{end}}
+                </td>
+                <td style="text-align:center;">
+                    <form action="/warga/set-peran" method="POST" style="display:inline-flex; gap:6px; align-items:center;">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <select name="peran" style="padding:4px 8px; font-size:0.78rem; border-radius:6px; border:1px solid var(--border);">
+                            <option value="latih" {{if .IsTraining}}selected{{end}}>Data Latih (Training)</option>
+                            <option value="uji" {{if not .IsTraining}}selected{{end}}>Data Uji (Testing)</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary" style="padding:4px 10px; font-size:0.75rem;">Simpan</button>
+                    </form>
+                </td>
+            </tr>
+            {{else}}
+            <tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-muted);">Belum ada data warga.</td></tr>
+            {{end}}
             </tbody>
         </table>
+        </div>
     </div>
-    <p style="margin-top: 16px; font-size: 0.75rem; color: var(--text-muted); text-align: center;">Keterangan: C1-C6 adalah tingkatan kelas. Kotak hijau menunjukkan prediksi yang benar.</p>
+</div>
+
+<!-- TAB 3: PROSES & EVALUASI -->
+<div id="tab3" class="tab-panel" style="display:none;">
+    <div class="card" style="margin-bottom:20px;">
+        <h3 style="margin-bottom:20px;">Pilih Model &amp; Jalankan Evaluasi</h3>
+        <form action="/training/proses" method="POST">
+            <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap;">
+                <div class="form-group" style="margin:0; flex:1; min-width:220px;">
+                    <label style="font-weight:600;">Pilih Data Training</label>
+                    <select name="model" style="margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--border); width:100%;">
+                        <option value="training1">Data Training 1 ({{.Stats.TotalTraining}} data)</option>
+                        <option value="training2">Data Training 2 ({{.Stats.TotalTraining2}} data)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0; flex:1; min-width:220px;">
+                    <label style="font-weight:600;">Filter Kategori</label>
+                    <select name="filter_kelas" style="margin-top:8px; padding:10px; border-radius:8px; border:1px solid var(--border); width:100%;">
+                        <option value="">Semua Kategori</option>
+                        <option value="Sangat Miskin">Sangat Miskin</option>
+                        <option value="Miskin">Miskin</option>
+                        <option value="Hampir Miskin">Hampir Miskin</option>
+                        <option value="Rentan Miskin">Rentan Miskin</option>
+                        <option value="Pas-pasan">Pas-pasan</option>
+                        <option value="Menengah ke Atas">Menengah ke Atas</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="padding:12px 32px; white-space:nowrap;">▶ Proses Hitung &amp; Evaluasi</button>
+            </div>
+        </form>
+    </div>
+
+    {{if .HasResult}}
+    {{if .ErrorUji}}
+    <div class="card" style="background:#fffbeb; border:1px solid #fde68a; margin-bottom:20px;">
+        <p style="color:#9a3412; font-weight:600;">Peringatan: {{.ErrorUji}}</p>
+    </div>
+    {{end}}
+
+    <div class="grid" style="grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;">
+        <div style="text-align:center; padding:20px; border:1px solid var(--border); border-radius:var(--radius); background:#f0fdf4;">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Akurasi</p>
+            <p style="font-size:1.5rem; font-weight:800; color:#16a34a;">{{printf "%.2f" .Stats.Accuracy}}%</p>
+        </div>
+        <div style="text-align:center; padding:20px; border:1px solid var(--border); border-radius:var(--radius);">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Presisi</p>
+            <p style="font-size:1.5rem; font-weight:800;">{{printf "%.4f" .Stats.Precision}}</p>
+        </div>
+        <div style="text-align:center; padding:20px; border:1px solid var(--border); border-radius:var(--radius);">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Recall</p>
+            <p style="font-size:1.5rem; font-weight:800;">{{printf "%.4f" .Stats.Recall}}</p>
+        </div>
+        <div style="text-align:center; padding:20px; border:1px solid var(--border); border-radius:var(--radius);">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">F1-Score</p>
+            <p style="font-size:1.5rem; font-weight:800;">{{printf "%.4f" .Stats.F1Score}}</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom:16px;">Confusion Matrix</h3>
+        <div style="overflow-x:auto;">
+            <table class="matrix" style="width:auto; margin:0 auto; border:1px solid var(--border);">
+                <thead>
+                    <tr>
+                        <th style="background:#f8fafc;">Aktual \ Prediksi</th>
+                        {{range .Classes}}<th style="background:#f8fafc;">{{index $.classifier.ClassNames .}}</th>{{end}}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{$matrix := .Matrix}}
+                    {{$classes := .Classes}}
+                    {{$names := .classifier.ClassNames}}
+                    {{range $actual := $classes}}
+                    <tr>
+                        <td style="font-weight:600; background:#f8fafc; text-align:left; font-size:0.8rem;">{{index $names $actual}}</td>
+                        {{range $pred := $classes}}
+                        {{$row := index $matrix $actual}}
+                        {{$val := 0}}
+                        {{if $row}}{{$val = index $row $pred}}{{end}}
+                        <td {{if and (eq $actual $pred) (gt $val 0)}}style="background:#ccfbf1; font-weight:700;"{{end}}>{{$val}}</td>
+                        {{end}}
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        <p style="margin-top:12px; font-size:0.75rem; color:var(--text-muted); text-align:center;">Kotak hijau = prediksi benar. Dilatih dengan: <strong>{{.ModelDipakai}}</strong> | Terakhir: {{.Stats.LastTrained}}</p>
+    </div>
+    {{else}}
+    <div class="card" style="text-align:center; padding:48px; color:var(--text-muted);">
+        <p style="font-size:1.1rem; margin-bottom:8px;">Belum ada hasil evaluasi.</p>
+        <p style="font-size:0.875rem;">Pilih model di atas lalu klik <strong>Proses Hitung &amp; Evaluasi</strong>.</p>
+    </div>
+    {{end}}
 </div>
 
 <style>
-    .matrix td {
-        padding: 12px 24px;
-        text-align: center;
-        border: 1px solid var(--border);
-    }
+.tab-btn { transition: all 0.2s; }
+.tab-btn.active { color: var(--primary) !important; border-bottom: 2px solid var(--primary) !important; }
+.matrix td { padding:10px 20px; text-align:center; border:1px solid var(--border); font-size:0.85rem; }
+.matrix th { padding:10px 20px; border:1px solid var(--border); font-size:0.8rem; }
 </style>
+<script>
+function switchTab(id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.color = 'var(--text-muted)';
+        b.style.borderBottom = 'none';
+    });
+    document.getElementById(id).style.display = 'block';
+    btn.classList.add('active');
+    btn.style.color = 'var(--primary)';
+    btn.style.borderBottom = '2px solid var(--primary)';
+}
+{{if .HasResult}}
+// Auto buka tab hasil jika sudah ada evaluasi
+document.addEventListener('DOMContentLoaded', () => switchTab('tab3', document.querySelectorAll('.tab-btn')[2]));
+{{end}}
+</script>
 {{end}}

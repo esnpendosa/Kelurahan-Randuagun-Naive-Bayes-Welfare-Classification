@@ -1,13 +1,8 @@
-{{/*
-Halaman Dashboard (Index)
-Halaman utama setelah admin/operator login. Menampilkan statistik singkat seperti total data warga, 
-jumlah warga terklasifikasi, tingkat akurasi model, diagram batang distribusi kesejahteraan, dan log aktivitas terbaru.
-*/}}
 {{define "title"}}Dashboard{{end}}
 {{define "header"}}Ringkasan Sistem Klasifikasi{{end}}
 
 {{define "content"}}
-<div class="grid">
+<div class="grid" style="grid-template-columns: repeat(3,1fr); gap:16px; margin-bottom:24px;">
     <div class="stat-card">
         <p class="stat-label">Total Data Warga</p>
         <p class="stat-value">{{.Stats.TotalWarga}}</p>
@@ -17,17 +12,35 @@ jumlah warga terklasifikasi, tingkat akurasi model, diagram batang distribusi ke
         <p class="stat-value">{{.Stats.TotalKlasifikasi}}</p>
     </div>
     <div class="stat-card">
-        <p class="stat-label">Akurasi Model</p>
-        <p class="stat-value">{{.Stats.Accuracy}}%</p>
+        <p class="stat-label">Total Data Latih</p>
+        <p class="stat-value">{{.Stats.TotalLatih}}</p>
+    </div>
+</div>
+
+<!-- Statistik Otomatis Per Kelas -->
+<div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-bottom:20px;">Distribusi Klasifikasi per Kategori</h3>
+    <div style="display:flex; flex-wrap:wrap; gap:12px;">
+        {{range .DistribusiKategori}}
+        <div style="flex:1; min-width:160px; padding:16px; border-radius:12px; border:1px solid var(--border); text-align:center;">
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:6px;">{{.Label}}</p>
+            <p style="font-size:2rem; font-weight:800; color:var(--primary); line-height:1;">{{.Count}}</p>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">{{printf "%.1f" .Percent}}%</p>
+            <div style="margin-top:8px; height:4px; background:#f1f5f9; border-radius:99px; overflow:hidden;">
+                <div style="width:{{printf "%.1f" .Percent}}%; height:100%; background:var(--primary); border-radius:99px;"></div>
+            </div>
+        </div>
+        {{else}}
+        <p style="color:var(--text-muted); font-size:0.875rem;">Belum ada data klasifikasi.</p>
+        {{end}}
     </div>
 </div>
 
 <div class="grid" style="grid-template-columns: 2fr 1fr;">
     <div class="card">
-        <h3>Distribusi Kelas Kesejahteraan</h3>
+        <h3>Distribusi Kelas Kesejahteraan (Grafik)</h3>
         <canvas id="welfareChart" style="margin-top: 24px; max-height: 300px;"></canvas>
     </div>
-
     <div class="card">
         <h3>Aktivitas Terbaru</h3>
         <ul style="list-style: none; margin-top: 20px;">
@@ -40,31 +53,30 @@ jumlah warga terklasifikasi, tingkat akurasi model, diagram batang distribusi ke
         </ul>
     </div>
 </div>
-<div id="dist-data-raw" style="display: none;">{{.DistribusiJSON}}</div>
 
+<div id="dist-data-raw" style="display:none;">{{.DistribusiJSON}}</div>
 <script>
-    const distData = JSON.parse(document.getElementById('dist-data-raw').textContent);
-    const ctx = document.getElementById('welfareChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: distData.map(d => d.Label),
-            datasets: [{
-                label: 'Jumlah Warga',
-                data: distData.map(d => d.Count),
-                backgroundColor: '#0d9488',
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false }
+    const distData = JSON.parse(document.getElementById('dist-data-raw').textContent || '[]');
+    if (distData.length > 0) {
+        const ctx = document.getElementById('welfareChart').getContext('2d');
+        const colors = ['#ef4444','#f97316','#eab308','#84cc16','#0d9488','#6366f1'];
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: distData.map(d => d.Label),
+                datasets: [{
+                    label: 'Jumlah Warga',
+                    data: distData.map(d => d.Count),
+                    backgroundColor: colors,
+                    borderRadius: 6
+                }]
             },
-            scales: {
-                y: { beginAtZero: true }
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
-        }
-    });
+        });
+    }
 </script>
 {{end}}
