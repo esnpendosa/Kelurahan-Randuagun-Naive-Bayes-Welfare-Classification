@@ -1,182 +1,277 @@
-# 📘 PANDUAN PENGGUNA (MANUAL BOOK)
-## Sistem Klasifikasi Kesejahteraan Ekonomi Keluarga
-### Kelurahan Randuagung — Berbasis Metode Naive Bayes Go SSR
+# 📘 BUKU PANDUAN OPERASIONAL PENGGUNA (MANUAL BOOK)
+## Sistem Klasifikasi Kesejahteraan Ekonomi Keluarga Kelurahan Randuagung
+### Berbasis Algoritma Naive Bayes Classifier & Go SSR Desktop Mode
 
 ---
 
-> **Untuk siapa panduan ini?**
-> Panduan ini disusun untuk memudahkan Petugas Kelurahan Randuagung dalam mengoperasikan aplikasi Klasifikasi Kesejahteraan. Di dalamnya memuat panduan lengkap dari instalasi, pengelolaan data, hingga evaluasi akurasi model.
+Buku panduan ini disusun sebagai manual operasional dan panduan teknis bagi Petugas Kelurahan Randuagung untuk mengoperasikan Aplikasi Klasifikasi Kesejahteraan. Panduan ini menjelaskan alur operasional sistem secara menyeluruh, pemeliharaan database, serta disertai contoh perhitungan manual matematika algoritma Naive Bayes.
 
 ---
 
 ## 📌 DAFTAR ISI
-1. [Bagian 1: Cara Membuka & Menutup Aplikasi](#-bagian-1-cara-membuka--menutup-aplikasi)
-2. [Bagian 2: Autentikasi Login](#-bagian-2-autentikasi-login)
-3. [Bagian 3: Dashboard & Ringkasan Statistik](#-bagian-3-dashboard--ringkasan-statistik)
-4. [Bagian 4: Manajemen Data Warga (CRUD & Filter Instan)](#-bagian-4-manajemen-data-warga-crud--filter-instan)
-   - [4.1 Pencarian & Filter Kesejahteraan Instan](#41-pencarian--filter-kesejahteraan-instan)
-   - [4.2 Tambah Warga & Penentuan Peran Evaluasi (Dataset 2)](#42-tambah-warga--penentuan-peran-evaluasi-dataset-2)
-   - [4.3 Import & Export Excel](#43-import--export-excel)
-5. [Bagian 5: Klasifikasi Baru (Prediksi Otomatis)](#-bagian-5-klasifikasi-baru-prediksi-otomatis)
-   - [5.1 Fitur Auto-Fill Indikator](#51-fitur-auto-fill-indikator)
-   - [5.2 Melakukan Klasifikasi](#52-melakukan-klasifikasi)
-   - [5.3 Hasil Analisis & Cetak Dokumen Rapi](#53-hasil-analisis--cetak-dokumen-rapi)
-6. [Bagian 6: Training & Hasil Evaluasi Model (Model Excel-Style)](#-bagian-6-training--hasil-evaluasi-model-model-excel-style)
-   - [6.1 Memahami Confusion Matrix 6x6](#61-memahami-confusion-matrix-6x6)
-   - [6.2 Memahami Metrik Performa (Recall, Precision, F1-Score)](#62-memahami-metrik-performa-recall-precision-f1-score)
-   - [6.3 Manajemen Peran Secara Dinamis](#63-manajemen-peran-secara-dinamis)
-7. [Bagian 7: Laporan Rekapitulasi & Cetak Dokumen](#-bagian-7-laporan-rekapitulasi--cetak-dokumen)
-8. [Bagian 8: Pengaturan Pengguna (Manajemen Akun)](#-bagian-8-pengaturan-pengguna-manajemen-akun)
-9. [Bagian 9: Pemeliharaan Database & Penyelesaian Masalah (FAQ)](#-bagian-9-pemeliharaan-database--penyelesaian-masalah-faq)
+1. [Bagian 1: Pengenalan Sistem & Arsitektur](#-bagian-1-pengenalan-sistem--arsitektur)
+2. [Bagian 2: Instalasi & Menjalankan Aplikasi](#-bagian-2-instalasi--menjalankan-aplikasi)
+   - [2.1 Persyaratan Perangkat Keras & Lunak](#21-persyaratan-perangkat-keras--lunak)
+   - [2.2 Cara Membuka Aplikasi (Kiosk Mode)](#22-cara-membuka-aplikasi-kiosk-mode)
+   - [2.3 Cara Menutup Aplikasi Secara Bersih](#23-cara-menutup-aplikasi-secara-bersih)
+3. [Bagian 3: Penggunaan Fitur Dashboard](#-bagian-3-penggunaan-fitur-dashboard)
+4. [Bagian 4: Pengelolaan Data Warga Kelurahan](#-bagian-4-pengelolaan-data-warga-kelurahan)
+   - [4.1 Pencarian Real-Time & Penyaringan Instan](#41-pencarian-real-time--penyaringan-instan)
+   - [4.2 Menambah & Mengedit Profil Kependudukan](#42-menambah--mengedit-profil-kependudukan)
+   - [4.3 Manajemen Peran Model (Latih & Uji - Dataset 2)](#43-manajemen-peran-model-latih--uji---dataset-2)
+   - [4.4 Alur Import & Export Excel](#44-alur-import--export-excel)
+5. [Bagian 5: Simulasi Klasifikasi Warga (Form Cerdas)](#-bagian-5-simulasi-klasifikasi-warga-form-cerdas)
+   - [5.1 Alur Kerja Fitur Auto-Fill Indikator](#51-alur-kerja-fitur-auto-fill-indikator)
+   - [5.2 Kuesioner 36 Indikator Kesejahteraan](#52-kuesioner-36-indikator-kesejahteraan)
+   - [5.3 Hasil Prediksi & Cetak Dokumen Resmi Bersih](#53-hasil-prediksi--cetak-dokumen-resmi-bersih)
+6. [Bagian 6: Modul Evaluasi Model & Confusion Matrix](#-bagian-6-modul-evaluasi-model--confusion-matrix)
+   - [6.1 Membaca Struktur Confusion Matrix 6x6](#61-membaca-struktur-confusion-matrix-6x6)
+   - [6.2 Penjelasan Metrik Evaluasi Matematika](#62-penjelasan-metrik-evaluasi-matematika)
+7. [Bagian 7: Contoh Simulasi Perhitungan Naive Bayes Secara Manual](#-bagian-7-contoh-simulasi-perhitungan-naive-bayes-secara-manual)
+   - [7.1 Pembentukan Dataset Contoh](#71-pembentukan-dataset-contoh)
+   - [7.2 Langkah Perhitungan Probabilitas Prior](#72-langkah-perhitungan-probabilitas-prior)
+   - [7.3 Langkah Perhitungan Probabilitas Likelihood (Laplace Smoothing)](#73-langkah-perhitungan-probabilitas-likelihood-laplace-smoothing)
+   - [7.4 Penggabungan Log-Probability & Normalisasi Softmax](#74-penggabungan-log-probability--normalisasi-softmax)
+8. [Bagian 8: Pemeliharaan Database & Backup Data](#-bagian-8-pemeliharaan-database--backup-data)
+9. [Bagian 9: FAQ & Panduan Solusi Masalah (Troubleshooting)](#-bagian-9-faq--panduan-solusi-masalah-troubleshooting)
 
 ---
 
-## 🚀 Bagian 1: Cara Membuka & Menutup Aplikasi
+## 💻 Bagian 1: Pengenalan Sistem & Arsitektur
 
-Aplikasi ini bersifat portabel dan dirancang berjalan secara lokal sebagai program desktop native.
+Sistem Klasifikasi Kesejahteraan Kelurahan Randuagung dirancang untuk mengelompokkan keluarga ke dalam 6 tingkat kemiskinan/kesejahteraan:
+1. **Sangat Miskin** (Tingkat kesulitan ekonomi tertinggi)
+2. **Miskin**
+3. **Hampir Miskin**
+4. **Rentan Miskin**
+5. **Pas-pasan**
+6. **Menengah ke Atas** (Keluarga mapan/mandiri)
 
-### 1.1 Cara Membuka Aplikasi
-1. Buka folder tempat program aplikasi diletakkan.
-2. Cari file biner **`Klasifikasi-Warga-Randuagung.exe`** (ikon jendela biru komputer).
-3. **Klik ganda (double-click)** pada file tersebut.
-4. Jendela Command Prompt (layar hitam) akan muncul sejenak, diikuti dengan terbukanya jendela aplikasi mandiri (Chrome App Mode) pada halaman Login.
-5. Jika Chrome App Mode tidak terbuka secara otomatis, buka Google Chrome secara manual dan ketik alamat: `http://127.0.0.1:8082`
-
-> ⚠️ **Penting:** Jangan tutup jendela Command Prompt hitam yang menyala di background komputer. Jendela tersebut merupakan server aplikasi lokal yang memproses seluruh algoritma dan database. Jika ditutup, aplikasi akan langsung mati.
-
-### 1.2 Cara Menutup Aplikasi
-Untuk menghentikan server secara bersih:
-1. Klik menu **"Keluar"** di pojok kanan atas untuk keluar dari sesi akun.
-2. Tutup jendela Chrome App Mode. Server lokal akan secara otomatis mati dalam beberapa saat atau Anda dapat menutup Command Prompt hitam yang menyala.
+Aplikasi dibangun menggunakan **Golang** sebagai server lokal, **SQLite 3** sebagai wadah data offline-first, dan dijalankan langsung di browser lokal dalam **App Mode** tanpa menggunakan internet.
 
 ---
 
-## 🔐 Bagian 2: Autentikasi Login
+## 🛠️ Bagian 2: Instalasi & Menjalankan Aplikasi
 
-Sebelum masuk to sistem, pengguna wajib melakukan autentikasi demi keamanan data warga.
+### 2.1 Persyaratan Perangkat Keras & Lunak
+*   **Sistem Operasi**: Windows 10 / 11 (direkomendasikan).
+*   **RAM**: Minimal 2 GB.
+*   **Browser**: Google Chrome terpasang di komputer (wajib untuk desktop shell kiosk).
 
-- **Username Bawaan**: `admin`
-- **Password Bawaan**: `admin123`
+### 2.2 Cara Membuka Aplikasi (Kiosk Mode)
+1.  Buka folder program aplikasi Anda.
+2.  Cari file bernama **`Klasifikasi-Warga-Randuagung.exe`**.
+3.  **Klik dua kali** pada file tersebut.
+4.  Jendela command prompt hitam akan muncul sebagai inisialisasi server lokal, disusul langsung oleh terbukanya aplikasi dalam tampilan window desktop bersih.
+5.  Masuk menggunakan akun default:
+    *   **Username**: `admin`
+    *   **Password**: `admin123`
 
-Petugas kelurahan dapat mengganti nama pengguna dan password bawaan ini di menu **Pengaturan Akun** sesaat setelah berhasil masuk demi keamanan data kelurahan.
-
----
-
-## 📊 Bagian 3: Dashboard & Ringkasan Statistik
-
-Setelah login, halaman utama (**Dashboard**) menyajikan ringkasan data analitis kelurahan:
-- **Total Warga**: Jumlah kepala keluarga yang saat ini tersimpan di database.
-- **Total Klasifikasi**: Jumlah riwayat warga yang telah diproses klasifikasinya secara real-time.
-- **Total Data Latih (Dataset 1)**: Jumlah basis data training awal.
-- **Grafik Distribusi Kesejahteraan**: Chart interaktif dinamis yang menyajikan komposisi tingkat kesejahteraan warga di Kelurahan Randuagung.
-
----
-
-## 👥 Bagian 4: Manajemen Data Warga (CRUD & Filter Instan)
-
-Menu **Data Warga** adalah pusat pengelolaan profil kependudukan kelurahan.
-
-### 4.1 Pencarian & Filter Kesejahteraan Instan
-Sistem kini dilengkapi dengan fitur filter multi-kriteria tanpa memuat ulang halaman (*zero reload*):
-* **Pencarian Nama/NIK**: Ketik nama kepala keluarga atau NIK di kotak pencarian, daftar warga akan menyaring secara otomatis saat Anda mengetik (*as you type*).
-* **Dropdown Filter Kelas**: Pilih salah satu kelas kesejahteraan (misal: **Sangat Miskin**, **Miskin**, dll.). Tabel akan menyaring baris warga yang sesuai dengan label tersebut secara real-time.
-
-### 4.2 Tambah Warga & Penentuan Peran Evaluasi (Dataset 2)
-Ketika Anda menambahkan warga secara manual:
-1. Klik **+ Tambah Warga Baru** di kanan atas.
-2. Isi NIK (16 digit), No KK, Nama Lengkap, Alamat, RT/RW, dan Kelurahan.
-3. Di bagian bawah, terdapat pilihan **"Peran dalam Evaluasi Model (Dataset 2)"**:
-   - **Sebagai Data Uji (Testing)**: Menjadikan data warga ini sebagai bahan pengujian akurasi model di Dataset 2.
-   - **Sebagai Data Latih (Training)**: Menjadikan data warga ini sebagai basis pembelajaran Naive Bayes di Dataset 2.
-4. Klik **Simpan Data Warga**.
-
-### 4.3 Import & Export Excel
-* **Import Data**: Masukkan banyak data warga sekaligus dengan mengunggah file Excel (.xlsx). Pilih file pada bagian form import lalu klik **Import**.
-* **Export Data**: Klik **Export Excel** untuk mengunduh seluruh master data warga ke dalam format tabel Excel.
+### 2.3 Cara Menutup Aplikasi Secara Bersih
+1.  Klik menu **"Keluar"** di pojok kanan atas untuk mengamankan akun.
+2.  Tutup jendela aplikasi. Server di latar belakang akan otomatis berhenti beroperasi.
 
 ---
 
-## 🧠 Bagian 5: Klasifikasi Baru (Prediksi Otomatis)
+## 📊 Bagian 3: Penggunaan Fitur Dashboard
 
-Ini adalah fitur inti yang digunakan untuk menentukan kelas tingkat kesejahteraan warga.
-
-### 5.1 Fitur Auto-Fill Indikator
-Sistem telah dilengkapi dengan pendeteksi data historis.
-* Saat Anda memilih nama warga dari dropdown kuesioner, sistem akan memanggil API database di background.
-* Jika warga tersebut **sudah pernah memiliki data indikator**, semua radio button 36 indikator di formulir bawah akan **terisi otomatis** sesuai data terakhir yang tersimpan.
-* Anda tidak perlu mengisi dari nol. Cukup periksa kembali, ubah indikator yang mengalami perubahan, lalu proses klasifikasi.
-
-### 5.2 Melakukan Klasifikasi
-1. Pilih nama warga.
-2. Lengkapi 36 indikator kemiskinan yang terbagi atas:
-   - **Kondisi Rumah** (IM1 - IM12)
-   - **Ekonomi Keluarga** (IM13 - IM24)
-   - **Aset & Fasilitas** (IM25 - IM36)
-3. Klik tombol **Mulai Proses Klasifikasi**.
-
-### 5.3 Hasil Analisis & Cetak Dokumen Rapi
-Setelah diklik, Anda akan diarahkan ke halaman **Hasil Analisis** yang menampilkan:
-- Hasil kelas kesejahteraan (misal: **Miskin**, **Pas-pasan**, dsb).
-- Grafik batang probabilitas kecocokan terhadap 6 kelas.
-- **Cetak Laporan Bersih**: Klik tombol **Cetak Hasil Prediksi** (atau tekan `Ctrl + P`). Sistem secara otomatis menyembunyikan sidebar kiri, tombol navigasi, dan header atas sehingga hasil cetakan/PDF berupa dokumen resmi hasil analisis keluarga yang bersih, formal, dan rapi.
+Dashboard menyajikan statistik ringkas tingkat kabupaten/kelurahan:
+*   **Total Warga**: Jumlah kepala keluarga terdaftar.
+*   **Total Hasil Klasifikasi**: Jumlah warga yang telah diuji/diklasifikasi secara real-time.
+*   **Visualisasi Chart.js**: Menampilkan diagram persentase sebaran tingkat kesejahteraan warga. Batang yang tinggi menandakan mayoritas status ekonomi di kelurahan tersebut.
 
 ---
 
-## ⚙️ Bagian 6: Training & Hasil Evaluasi Model (Model Excel-Style)
+## 👥 Bagian 4: Pengelolaan Data Warga Kelurahan
 
-Halaman ini digunakan oleh Admin untuk menguji performa model matematika Naive Bayes. Terdapat 2 dataset yang disediakan (Dataset 1 dan Dataset 2).
+Menu ini digunakan untuk mencatat identitas kependudukan dasar warga sebelum melakukan klasifikasi.
 
-### 6.1 Memahami Confusion Matrix 6x6
-Tabel ini membandingkan data aktual (baris) dengan hasil prediksi model (kolom) untuk data uji:
-- **Diagonal Kuning**: Menunjukkan jumlah tebakan benar (True Positive - TP).
-- **Kolom Jumlah (Kanan)**: Total aktual data uji per kelas.
-- **Baris Jumlah (Bawah)**: Total prediksi model per kelas.
-- **Pojok Kanan Bawah (Hijau)**: Total data uji global (misal: 36 data).
+### 4.1 Pencarian Real-Time & Penyaringan Instan
+*   **Pencarian**: Ketik nama warga atau NIK pada kolom pencarian. Sistem akan menyaring isi tabel seketika tanpa perlu menekan tombol Cari atau memuat ulang halaman.
+*   **Filter Dropdown**: Klik dropdown **"Filter Status Kesejahteraan"**, lalu pilih kategori (misal: *Sangat Miskin*). Tabel hanya akan menampilkan warga yang tergolong dalam kelas tersebut.
 
-### 6.2 Memahami Metrik Performa (Recall, Precision, F1-Score)
-Sistem menghitung performa dengan format desimal presisi tinggi ala Microsoft Excel:
-* **Akurasi**: Persentase kebenaran prediksi global ($\frac{\text{Jumlah Benar}}{\text{Total Data Uji}}$).
-* **Tabel Recall**: Mengukur kemampuan model dalam menemukan kembali data aktual per kelas ($\text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}$) dengan baris **Rata-Rata Recall** di bagian bawah.
-* **Tabel Precision**: Mengukur ketepatan prediksi model terhadap data yang ditebak per kelas ($\text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}$) dengan baris **Rata-Rata Presisi** di bagian bawah.
-* **F1-Score**: Rata-rata harmonis global ($2 \times \frac{\text{Presisi} \times \text{Recall}}{\text{Presisi} + \text{Recall}}$).
+### 4.2 Menambah & Mengedit Profil Kependudukan
+*   Klik **+ Tambah Warga Baru** untuk membuka form input manual.
+*   Isi NIK (16 digit), No KK, Nama Lengkap (Kepala Keluarga), Alamat, RT/RW, dan Kelurahan.
+*   Pilih opsi **Peran dalam Evaluasi Model (Dataset 2)**:
+    *   **Sebagai Data Uji**: Default warga baru untuk dievaluasi prediksinya.
+    *   **Sebagai Data Latih**: Menjadikan warga tersebut dasar model training pembelajaran.
+*   Klik **Simpan Data Warga**.
 
-### 6.3 Manajemen Peran Secara Dinamis
-Pada tab **5. Manajemen Peran (Split 2)**, Anda dapat meninjau peran setiap warga pada Dataset 2. Anda dapat mengubah peran warga dari **Uji** ke **Latih** secara dinamis hanya dengan sekali klik tombol di tabel.
+### 4.3 Manajemen Peran Model (Latih & Uji - Dataset 2)
+Jika Anda ingin mengganti peran warga di kemudian hari:
+1.  Buka menu **Training Model** di sidebar kiri.
+2.  Scroll ke bawah menuju **5. Manajemen Peran (Split 2)**.
+3.  Cari nama warga, lalu klik tombol **Jadikan Data Latih** atau **Jadikan Data Uji** sesuai keperluan Anda secara dinamis.
 
----
-
-## 📋 Bagian 7: Laporan Rekapitulasi & Cetak Dokumen
-
-Menu **Laporan** menyajikan seluruh rekapitulasi data hasil klasifikasi warga.
-* **Filter Kategori**: Menyaring tabel laporan berdasarkan kategori kesejahteraan.
-* **Export Excel**: Mengunduh rekap laporan dalam format `.xlsx`.
-* **Print Ramah Kertas**: Tekan `Ctrl + P` pada halaman ini. Halaman akan dicetak sebagai dokumen bersih tanpa menyertakan sidebar, topbar, dan tombol-tombol filter.
+### 4.4 Alur Import & Export Excel
+*   **Import Excel**:
+    *   Format kolom file Excel: `Kolom A: NIK`, `Kolom B: Nama`, `Kolom C: Alamat`, `Kolom D: Kelurahan`.
+    *   Klik **Pilih File**, pilih file `.xlsx` Anda, lalu klik **Import**.
+*   **Export Excel**: Klik **Export Excel** untuk mengunduh master data warga saat ini ke komputer dalam bentuk tabel `.xlsx`.
 
 ---
 
-## 🔑 Bagian 8: Pengaturan Pengguna (Manajemen Akun)
+## 🧠 Bagian 5: Simulasi Klasifikasi Warga (Form Cerdas)
 
-Menu **Pengaturan Akun** digunakan untuk mengelola kredensial admin dan operator:
-1. Klik menu **Pengaturan Akun**.
-2. Anda dapat melihat daftar pengguna terdaftar.
-3. Klik **Edit** pada user admin untuk mengganti username atau mengganti password default `admin123`.
+### 5.1 Alur Kerja Fitur Auto-Fill Indikator
+Sistem telah dibekali dengan kecerdasan penyimpanan dinamis.
+1.  Pilih menu **Klasifikasi Baru**.
+2.  Pada kolom **Pilih Data Warga**, ketik atau pilih NIK/Nama Warga.
+3.  Jika warga tersebut **sudah pernah diinput indikatornya di masa lalu**, sistem akan otomatis mengisi ke-36 radio button pilihan jawaban di bawahnya secara instan.
+4.  Petugas hanya perlu meninjau dan mengubah pilihan yang berubah, lalu memproses prediksi.
+
+### 5.2 Kuesioner 36 Indikator Kesejahteraan
+Formulir dikelompokkan ke dalam 3 kartu besar:
+*   **Kondisi Rumah** (IM1 - IM12): Memotret status tempat tinggal fisik (lantai terluas, jenis dinding, kepemilikan rumah, atap, air bersih, dll).
+*   **Ekonomi Keluarga** (IM13 - IM24): Mengukur pendapatan bulanan, jumlah tanggungan, tingkat pendidikan, bahan bakar memasak, frekuensi konsumsi protein, serta fasilitas BPJS.
+*   **Aset & Fasilitas** (IM25 - IM36): Mendata kepemilikan barang sekunder (motor, mobil, AC, emas, internet, laptop, mesin cuci, dll).
+
+Pilihan jawaban terstandardisasi dari **A** (paling memprihatinkan/pra-sejahtera) hingga **D** (paling sejahtera/mandiri).
+
+### 5.3 Hasil Prediksi & Cetak Dokumen Resmi Bersih
+Sistem akan memproses Naive Bayes dan mengarahkan ke halaman hasil:
+*   Menampilkan nama kelas akhir.
+*   Grafik probabilitas persentase untuk masing-masing 6 kelas.
+*   **Cara Cetak Rapi**:
+    1. Klik tombol **Cetak Hasil Prediksi** (atau tekan `Ctrl + P`).
+    2. Pada jendela opsi cetak browser, pastikan mencentang **Hilangkan Header & Footer** (untuk menyembunyikan URL situs dan tanggal otomatis di kertas).
+    3. Simpan sebagai PDF atau cetak ke printer A4. Sidebar menu dan tombol sistem akan disembunyikan otomatis oleh media print CSS.
 
 ---
 
-## 📂 Bagian 9: Pemeliharaan Database & Penyelesaian Masalah (FAQ)
+## ⚙️ Bagian 6: Modul Evaluasi Model & Confusion Matrix
 
-### 9.1 Pemeliharaan Database
-- Database aplikasi ini berbentuk file tunggal **`data_skripsi.db`** di root folder.
-- **Backup Rutin**: Disarankan untuk menyalin file `data_skripsi.db` ini ke flashdisk/cloud drive secara berkala. Jika komputer Anda mengalami kendala hardware, data Anda tetap aman.
+Halaman **Training Model** digunakan untuk menguji kualitas kecerdasan buatan Naive Bayes.
 
-### 9.2 Pertanyaan yang Sering Ditanyakan (FAQ)
-* **Q: Mengapa hasil cetak di browser masih menampilkan sidebar menu?**
-  * *A*: Pastikan Anda menekan tombol **"Cetak Hasil Prediksi"** di halaman hasil, atau refresh halaman terlebih dahulu sebelum menekan `Ctrl + P` agar stylesheet cetak termuat dengan benar.
-* **Q: Mengapa metrik evaluasi bernilai 0% setelah saya klik Mulai Proses Hitung?**
-  * *A*: Periksa kembali apakah data uji yang didefinisikan di manajemen peran sudah memiliki label kelas aktual di database. Jika tidak ada data uji berlabel aktual, model tidak memiliki pembanding untuk menghitung akurasi.
-* **Q: Apakah aplikasi ini membutuhkan internet?**
-  * *A*: Tidak. Aplikasi berjalan $100\%$ offline secara lokal di komputer kelurahan.
+### 6.1 Membaca Struktur Confusion Matrix 6x6
+Tabel Confusion Matrix memetakan data aktual dengan data prediksi:
+*   **Baris**: Kelas Aktual (Kondisi Lapangan Sebenarnya).
+*   **Kolom**: Kelas Prediksi (Tebakan Algoritma).
+*   **Sel Diagonal Kuning**: Jumlah data uji yang berhasil ditebak dengan benar oleh sistem (True Positive).
+*   **Sel Luar Diagonal**: Jumlah data yang tebakannya meleset.
+
+### 6.2 Penjelasan Metrik Evaluasi Matematika
+*   **Akurasi**: Rasio prediksi benar secara keseluruhan terhadap total data uji.
+*   **Recall per Kelas**: Seberapa andal sistem menebak kategori tertentu berdasarkan seluruh data aktual di kelas tersebut.
+*   **Precision per Kelas**: Seberapa akurat tebakan sistem ketika menunjuk kategori tertentu berdasarkan total tebakan sistem.
+*   **F1-Score**: Nilai rata-rata harmonis untuk melihat performa global tanpa dipengaruhi bias data.
 
 ---
-*Manual Book v2.0 - Sistem Klasifikasi Kesejahteraan Kelurahan Randuagung*
-*Dikembangkan oleh Tim Developer Skripsi Teknik Informatika - Kelurahan Randuagung*
+
+## 🧮 Bagian 7: Contoh Simulasi Perhitungan Naive Bayes Secara Manual
+
+Untuk memudahkan penulisan Bab IV Skripsi, berikut disajikan simulasi perhitungan matematika Naive Bayes secara lengkap.
+
+### 7.1 Pembentukan Dataset Contoh
+Misalkan kita memiliki data latih sebanyak **10 kepala keluarga** yang terbagi ke dalam **2 Kelas Kesejahteraan**:
+*   $C_1$: **Miskin** (5 data)
+*   $C_2$: **Menengah** (5 data)
+
+Kita hanya akan menguji **2 Indikator** untuk kesederhanaan contoh:
+*   $X_1$: Jenis Dinding Rumah (Pilihan: A = Bambu, B = Kayu, C = Tembok) $\rightarrow$ Jumlah kategori $|V| = 3$.
+*   $X_2$: Sumber Air Minum (Pilihan: A = Sumur Sungai, B = Sumur Pompa, C = PAM) $\rightarrow$ Jumlah kategori $|V| = 3$.
+
+#### Tabel Data Latih (Training):
+| No | Nama | Jenis Dinding ($X_1$) | Sumber Air ($X_2$) | Kelas Aktual ($C$) |
+|:---:|---|:---:|:---:|:---:|
+| 1 | Warga 1 | A | A | Miskin |
+| 2 | Warga 2 | A | B | Miskin |
+| 3 | Warga 3 | B | A | Miskin |
+| 4 | Warga 4 | B | B | Miskin |
+| 5 | Warga 5 | C | A | Miskin |
+| 6 | Warga 6 | B | C | Menengah |
+| 7 | Warga 7 | C | B | Menengah |
+| 8 | Warga 8 | C | C | Menengah |
+| 9 | Warga 9 | C | C | Menengah |
+| 10| Warga 10| B | C | Menengah |
+
+---
+
+### 7.2 Langkah Perhitungan Probabilitas Prior
+Probabilitas awal masing-masing kelas:
+$$P(C_1 = \text{Miskin}) = \frac{5}{10} = 0.5$$
+$$P(C_2 = \text{Menengah}) = \frac{5}{10} = 0.5$$
+
+---
+
+### 7.3 Langkah Perhitungan Probabilitas Likelihood (Laplace Smoothing)
+Kita akan mengklasifikasikan warga baru (**Warga Uji**) dengan karakteristik:
+*   $X_1$ (Jenis Dinding) = **A (Bambu)**
+*   $X_2$ (Sumber Air) = **C (PAM)**
+
+Kita hitung nilai **Likelihood** dengan rumus **Laplace Smoothing** ($|V| = 3$):
+$$P(X_i | C_k) = \frac{Count(X_i \text{ di kelas } C_k) + 1}{Count(C_k) + 3}$$
+
+#### A. Untuk Kelas $C_1$ (Miskin):
+*   Untuk $X_1 = A$:
+    *   Jumlah dinding 'A' di kelas Miskin = 2 (Warga 1 dan Warga 2).
+    *   $$P(X_1 = A | C_1 = \text{Miskin}) = \frac{2 + 1}{5 + 3} = \frac{3}{8} = 0.375$$
+*   Untuk $X_2 = C$:
+    *   Jumlah sumber air 'C' di kelas Miskin = 0.
+    *   $$P(X_2 = C | C_1 = \text{Miskin}) = \frac{0 + 1}{5 + 3} = \frac{1}{8} = 0.125$$
+
+#### B. Untuk Kelas $C_2$ (Menengah):
+*   Untuk $X_1 = A$:
+    *   Jumlah dinding 'A' di kelas Menengah = 0.
+    *   $$P(X_1 = A | C_2 = \text{Menengah}) = \frac{0 + 1}{5 + 3} = \frac{1}{8} = 0.125$$
+*   Untuk $X_2 = C$:
+    *   Jumlah sumber air 'C' di kelas Menengah = 4 (Warga 6, 8, 9, 10).
+    *   $$P(X_2 = C | C_2 = \text{Menengah}) = \frac{4 + 1}{5 + 3} = \frac{5}{8} = 0.625$$
+
+---
+
+### 7.4 Penggabungan Log-Probability & Normalisasi Softmax
+
+#### Langkah 1: Penggabungan Nilai Logaritma Alami ($\ln$)
+Untuk mencegah underflow nilai pecahan kecil, kita lakukan penjumlahan logaritma:
+$$\text{Nilai Log}(C_k) = \ln P(C_k) + \ln P(X_1 | C_k) + \ln P(X_2 | C_k)$$
+
+*   **Untuk Kelas $C_1$ (Miskin)**:
+    $$\text{Nilai Log}(C_1) = \ln(0.5) + \ln(0.375) + \ln(0.125)$$
+    $$\text{Nilai Log}(C_1) = (-0.6931) + (-0.9808) + (-2.0794) = -3.7533$$
+
+*   **Untuk Kelas $C_2$ (Menengah)**:
+    $$\text{Nilai Log}(C_2) = \ln(0.5) + \ln(0.125) + \ln(0.625)$$
+    $$\text{Nilai Log}(C_2) = (-0.6931) + (-2.0794) + (-0.4700) = -3.2425$$
+
+#### Langkah 2: Mengembalikan ke Nilai Eksponensial ($e^x$)
+$$E_1 = e^{-3.7533} = 0.02344$$
+$$E_2 = e^{-3.2425} = 0.03907$$
+
+#### Langkah 3: Normalisasi Softmax (Menghasilkan Persentase)
+$$\text{Total Eksponensial} = E_1 + E_2 = 0.02344 + 0.03907 = 0.06251$$
+
+*   **Probabilitas Akhir Warga Uji Tergolong Miskin ($C_1$)**:
+    $$P(C_1 | X) = \frac{0.02344}{0.06251} = 0.3750 \rightarrow \mathbf{37.5\%}$$
+
+*   **Probabilitas Akhir Warga Uji Tergolong Menengah ($C_2$)**:
+    $$P(C_2 | X) = \frac{0.03907}{0.06251} = 0.6250 \rightarrow \mathbf{62.5\%}$$
+
+#### **Kesimpulan**:
+Sistem akan memprediksi warga baru tersebut masuk ke dalam kelas **Menengah** dengan probabilitas sebesar **$62.5\%$** karena nilai $P(Menengah | X) > P(Miskin | X)$.
+
+---
+
+## 📂 Bagian 8: Pemeliharaan Database & Backup Data
+
+*   Seluruh data disimpan pada file database **`data_skripsi.db`** di folder root aplikasi.
+*   **Cara melakukan backup**:
+    1.  Tutup aplikasi terlebih dahulu.
+    2.  Salin (copy) file `data_skripsi.db` dan simpan ke flashdisk atau penyimpanan awan (Google Drive) secara berkala.
+    3.  Jika terjadi kerusakan komputer, cukup letakkan file backup tersebut kembali ke folder program dengan nama yang sama untuk mengembalikan semua data Anda.
+
+---
+
+## ❓ Bagian 9: FAQ & Panduan Solusi Masalah (Troubleshooting)
+
+*   **Q: Aplikasi tidak terbuka saat diklik double.**
+    *   *A*: Pastikan browser Google Chrome telah terinstal di Windows Anda. Atau, buka browser Anda sendiri lalu ketik alamat `http://127.0.0.1:8082`.
+*   **Q: Mengapa hasil akurasi model bernilai 0%?**
+    *   *A*: Hal ini terjadi karena tidak ada data uji berlabel aktual di database. Daftarkan minimal beberapa warga dengan peran "Data Uji" dan isi kelas aktualnya untuk memicu evaluasi.
+*   **Q: Bagaimana cara mengganti akun password admin bawaan?**
+    *   *A*: Pilih menu **Pengaturan Akun**, lalu klik **Edit** pada akun admin, ketik sandi baru dan klik simpan.
+
+---
+*Manual Book v2.5 - Kelurahan Randuagung*
+*Sistem Klasifikasi Kesejahteraan Naive Bayes*
