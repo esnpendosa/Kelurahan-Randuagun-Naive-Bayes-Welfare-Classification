@@ -1,6 +1,7 @@
 package main // Paket utama sebagai titik masuk (entry point) aplikasi
 
 import (
+	"database/sql"
 	"fmt"                    // Mengimpor paket untuk format teks dan output
 	"html/template"          // Mengimpor paket untuk mesin template HTML
 	"io"                     // Mengimpor paket untuk operasi input/output
@@ -21,8 +22,9 @@ import (
 
 	"embed"    // Paket untuk menyematkan file statis ke dalam binary
 	"os"       // Paket untuk operasi sistem operasi (seperti Exit)
-	"os/exec"  // Paket untuk menjalankan perintah eksternal
-	"runtime"  // Paket untuk mendeteksi sistem operasi saat ini
+	"os/exec"  // Paket untuk menjalankan perintah eksternal (Chrome kiosk mode)
+	
+	"github.com/zserge/lorca" // Paket untuk membuat window desktop native (dengan fallback)
 )
 
 //go:embed templates static
@@ -50,6 +52,51 @@ func (t *PerenderTemplate) Render(w io.Writer, nama string, data interface{}, c 
 	return tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
+func ambilDatasetGabungan(dbSistem *sql.DB, split int) []map[string]interface{} {
+	latih, _ := db.AmbilDataLatihSplit(dbSistem, split)
+	uji, _ := db.AmbilDataUjiSplit(dbSistem, split)
+
+	var hasil []map[string]interface{}
+	idx := 1
+
+	namaKelas := map[int]string{
+		1: "Sangat Miskin", 2: "Miskin", 3: "Hampir Miskin",
+		4: "Rentan Miskin", 5: "Pas-pasan", 6: "Menengah ke Atas",
+	}
+
+	for _, l := range latih {
+		klsName := namaKelas[l.Kelas]
+		if klsName == "" {
+			klsName = "-"
+		}
+		hasil = append(hasil, map[string]interface{}{
+			"No":        idx,
+			"Nama":      l.Nama,
+			"Tipe":      "Training",
+			"Kelas":     klsName,
+			"Indikator": l.Indikator,
+		})
+		idx++
+	}
+
+	for _, u := range uji {
+		klsName := namaKelas[u.Kelas]
+		if klsName == "" {
+			klsName = "-"
+		}
+		hasil = append(hasil, map[string]interface{}{
+			"No":        idx,
+			"Nama":      u.Nama,
+			"Tipe":      "Uji",
+			"Kelas":     klsName,
+			"Indikator": u.Indikator,
+		})
+		idx++
+	}
+
+	return hasil
+}
+
 func main() {
 	e := echo.New() // Membuat instance aplikasi Echo baru
 
@@ -74,6 +121,13 @@ func main() {
 			case "Menengah ke Atas": return "6"
 			default: return "secondary"
 			}
+		},
+		"seq": func(start, end int) []int {
+			var r []int
+			for i := start; i <= end; i++ {
+				r = append(r, i)
+			}
+			return r
 		},
 	}
 	
@@ -272,7 +326,7 @@ func main() {
 	// Daftar Warga (Khusus Admin)
 	e.GET("/warga", func(c echo.Context) error {
 		// Mengambil semua data warga diurutkan berdasarkan status data latih
-		rows, err := dbSistem.Query("SELECT id, nik, no_kk, nama_lengkap, alamat, kelurahan, data_latih FROM warga ORDER BY data_latih DESC, id ASC")
+		rows, err := dbSistem.Query("SELECT id, nik, no_kk, nama_lengkap, alamat, kelurahan, data_latih, label_kelas FROM warga ORDER BY data_latih DESC, id ASC")
 		if err != nil {
 			return err
 		}
@@ -282,11 +336,16 @@ func main() {
 		for rows.Next() {
 			var id, isLatih int
 			var nik, nokk, nama, alamat, kelurahan string
-			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih); err != nil {
+			var labelKelas sql.NullString
+			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas); err != nil {
 				continue
 			}
+			kelasStr := "-"
+			if labelKelas.Valid && labelKelas.String != "" {
+				kelasStr = labelKelas.String
+			}
 			daftarWarga = append(daftarWarga, map[string]interface{}{
-				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1,
+				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1, "Kelas": kelasStr,
 			})
 		}
 
@@ -356,6 +415,15 @@ func main() {
 			inputan[i.ID] = c.FormValue(i.ID) 
 		}
 
+		// Simpan/update data indikator ke database
+		dbSistem.Exec("DELETE FROM data_indikator WHERE warga_id = ?", idWarga)
+		for _, i := range daftarIndikator {
+			val := inputan[i.ID]
+			if val != "" {
+				dbSistem.Exec("INSERT INTO data_indikator (warga_id, indikator_id, nilai) VALUES (?, ?, ?)", idWarga, i.ID, val)
+			}
+		}
+
 		// Memanggil fungsi Prediksi pada model Naive Bayes menggunakan data inputan
 		// Hasilnya adalah map probabilitas kemiripan warga tersebut ke setiap kelas (1-6)
 		peluang := modelNB.Prediksi(inputan)
@@ -365,6 +433,9 @@ func main() {
 		
 		// Mengubah ID kelas (1-6) menjadi teks nama kelas (contoh: "Miskin", "Pas-pasan")
 		namaKelas := classifier.DaftarNamaKelas[kelasTerbaik]
+
+		// Update label kelas warga di database
+		dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", namaKelas, idWarga)
 
 		// Mengubah hasil perhitungan peluang menjadi format string JSON agar bisa disimpan di database
 		peluangJSON, _ := json.Marshal(peluang)
@@ -425,10 +496,17 @@ func main() {
 
 	// Training Model - halaman utama (hanya lihat data)
 	e.GET("/training", func(c echo.Context) error {
-		dataLatih, _ := db.AmbilDataLatih(dbSistem)
-		dataUji, _ := db.AmbilDataUji(dbSistem)
+		dataLatih, _ := db.AmbilDataLatihSplit(dbSistem, 1)
+		dataUji, _ := db.AmbilDataUjiSplit(dbSistem, 1)
 
-		// Distribusi data latih per kelas
+		dataLatih2, _ := db.AmbilDataLatihSplit(dbSistem, 2)
+		dataUji2, _ := db.AmbilDataUjiSplit(dbSistem, 2)
+
+		// Ambil dataset gabungan dengan indikator
+		dataset1 := ambilDatasetGabungan(dbSistem, 1)
+		dataset2 := ambilDatasetGabungan(dbSistem, 2)
+
+		// Distribusi data latih per kelas (Split 1)
 		distLatihMap := make(map[string]int)
 		for _, d := range dataLatih { distLatihMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
 		distUjiMap := make(map[string]int)
@@ -445,31 +523,52 @@ func main() {
 			distUji = append(distUji, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
 		}
 
-		// Semua warga untuk tab dinamis
-		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih FROM warga ORDER BY id ASC")
+		// Distribusi data latih per kelas (Split 2)
+		distLatihMap2 := make(map[string]int)
+		for _, d := range dataLatih2 { distLatihMap2[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		distUjiMap2 := make(map[string]int)
+		for _, d := range dataUji2 { distUjiMap2[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+
+		var distLatih2, distUji2 []map[string]interface{}
+		for _, nama := range urutan {
+			jml := distLatihMap2[nama]
+			pct := 0.0; if len(dataLatih2)>0 { pct = float64(jml)/float64(len(dataLatih2))*100 }
+			distLatih2 = append(distLatih2, map[string]interface{}{"Label":nama,"Count":jml,"Percent":pct})
+			jmlU := distUjiMap2[nama]
+			pctU := 0.0; if len(dataUji2)>0 { pctU = float64(jmlU)/float64(len(dataUji2))*100 }
+			distUji2 = append(distUji2, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
+		}
+
+		// Semua warga untuk tab dinamis (menggunakan data_latih_2)
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, label_kelas FROM warga ORDER BY id ASC")
 		defer rows2.Close()
 		var semuaWarga []map[string]interface{}
 		for rows2.Next() {
-			var id, isLatih int; var nik, nama string
-			rows2.Scan(&id, &nik, &nama, &isLatih)
+			var id, isLatih2 int; var nik, nama, labelKelas string
+			rows2.Scan(&id, &nik, &nama, &isLatih2, &labelKelas)
+			if labelKelas == "" {
+				labelKelas = "-"
+			}
 			semuaWarga = append(semuaWarga, map[string]interface{}{
-				"ID":"" + fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih==1,
+				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih2==1, "Kelas":labelKelas,
 			})
 		}
-
-		var jumlahLatih2 int
-		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih2)
 
 		return c.Render(http.StatusOK, "training.html", map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Stats": map[string]interface{}{
 				"TotalTraining": len(dataLatih),
 				"TotalTesting":  len(dataUji),
-				"TotalTraining2": jumlahLatih2,
+				"TotalTraining2": len(dataLatih2),
+				"TotalTesting2":  len(dataUji2),
 				"LastTrained": "-",
 			},
+			"Dataset1":        dataset1,
+			"Dataset2":        dataset2,
 			"DistribusiLatih": distLatih,
 			"DistribusiUji":   distUji,
+			"DistribusiLatih2": distLatih2,
+			"DistribusiUji2":   distUji2,
 			"SemuaWarga":      semuaWarga,
 			"HasResult":       false,
 			"classifier": map[string]interface{}{"ClassNames": classifier.DaftarNamaKelas},
@@ -480,10 +579,14 @@ func main() {
 	e.POST("/training/proses", func(c echo.Context) error {
 		modelDipilih := c.FormValue("model") // training1 atau training2
 		filterKelas := c.FormValue("filter_kelas")
-		_ = modelDipilih
 
-		dataLatih, _ := db.AmbilDataLatih(dbSistem)
-		dataUji, _ := db.AmbilDataUji(dbSistem)
+		splitVal := 1
+		if modelDipilih == "training2" {
+			splitVal = 2
+		}
+
+		dataLatih, _ := db.AmbilDataLatihSplit(dbSistem, splitVal)
+		dataUji, _ := db.AmbilDataUjiSplit(dbSistem, splitVal)
 
 		// Filter kelas jika dipilih
 		if filterKelas != "" {
@@ -509,18 +612,44 @@ func main() {
 		benar, total := 0, 0
 		matriks := make(map[classifier.KelasKesejahteraan]map[classifier.KelasKesejahteraan]int)
 		for _, k1 := range modelNB.SemuaKelas { matriks[k1] = make(map[classifier.KelasKesejahteraan]int) }
+		
+		rowTotals := make(map[classifier.KelasKesejahteraan]int)
+		colTotals := make(map[classifier.KelasKesejahteraan]int)
+
+		type DetailPrediksi struct {
+			Nama      string
+			Aktual    string
+			Prediksi  string
+			IsCorrect bool
+		}
+		var daftarPrediksi []DetailPrediksi
+
 		for _, du := range dataUji {
 			p := modelNB.Prediksi(du.Indikator)
 			pred := modelNB.AmbilKelasTerbaik(p)
 			aktual := classifier.KelasKesejahteraan(du.Kelas)
 			if matriks[aktual] == nil { matriks[aktual] = make(map[classifier.KelasKesejahteraan]int) }
 			matriks[aktual][pred]++
-			if aktual == pred { benar++ }
+			
+			rowTotals[aktual]++
+			colTotals[pred]++
+
+			isBenar := (aktual == pred)
+			if isBenar { benar++ }
 			total++
+
+			daftarPrediksi = append(daftarPrediksi, DetailPrediksi{
+				Nama:      du.Nama,
+				Aktual:    classifier.DaftarNamaKelas[aktual],
+				Prediksi:  classifier.DaftarNamaKelas[pred],
+				IsCorrect: isBenar,
+			})
 		}
+
 		akurasi := 0.0; if total > 0 { akurasi = float64(benar) / float64(total) }
 
-		var totP, totR, totF1, cnt float64
+		var totP, totR, cnt float64
+		var detailPerKelas []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			tp := float64(matriks[k][k])
 			var fp, fn float64
@@ -529,32 +658,77 @@ func main() {
 			pr := 0.0; if tp+fp > 0 { pr = tp / (tp + fp) }
 			rc := 0.0; if tp+fn > 0 { rc = tp / (tp + fn) }
 			f1 := 0.0; if pr+rc > 0 { f1 = 2 * pr * rc / (pr + rc) }
-			totP += pr; totR += rc; totF1 += f1; cnt++
+			totP += pr; totR += rc; cnt++
+
+			detailPerKelas = append(detailPerKelas, map[string]interface{}{
+				"Kelas":        classifier.DaftarNamaKelas[k],
+				"KelasID":      int(k),
+				"TP":           int(tp),
+				"FP":           int(fp),
+				"FN":           int(fn),
+				"TotalAktual":  int(tp + fn), // TP + FN
+				"TotalKolom":   int(tp + fp), // TP + FP
+				"Precision":    pr,
+				"Recall":       rc,
+				"PrecisionPct": pr * 100,
+				"RecallPct":    rc * 100,
+				"F1Score":      f1,
+			})
 		}
 		if cnt == 0 { cnt = 1 }
+		macroP := totP / cnt
+		macroR := totR / cnt
+		macroF1 := 0.0
+		if macroP+macroR > 0 {
+			macroF1 = 2 * macroP * macroR / (macroP + macroR)
+		}
+
+		// Load distributions for rendering BOTH splits in tabs
+		dl1, _ := db.AmbilDataLatihSplit(dbSistem, 1)
+		du1, _ := db.AmbilDataUjiSplit(dbSistem, 1)
+		dl2, _ := db.AmbilDataLatihSplit(dbSistem, 2)
+		du2, _ := db.AmbilDataUjiSplit(dbSistem, 2)
 
 		urutan := []string{"Sangat Miskin","Miskin","Hampir Miskin","Rentan Miskin","Pas-pasan","Menengah ke Atas"}
+		
 		distLatihMap := make(map[string]int)
-		for _, d := range dataLatih { distLatihMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		for _, d := range dl1 { distLatihMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
 		distUjiMap := make(map[string]int)
-		for _, d := range dataUji { distUjiMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		for _, d := range du1 { distUjiMap[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		
 		var distLatih, distUji []map[string]interface{}
 		for _, nama := range urutan {
-			jml := distLatihMap[nama]; pct := 0.0; if len(dataLatih)>0 { pct = float64(jml)/float64(len(dataLatih))*100 }
+			jml := distLatihMap[nama]; pct := 0.0; if len(dl1)>0 { pct = float64(jml)/float64(len(dl1))*100 }
 			distLatih = append(distLatih, map[string]interface{}{"Label":nama,"Count":jml,"Percent":pct})
-			jmlU := distUjiMap[nama]; pctU := 0.0; if len(dataUji)>0 { pctU = float64(jmlU)/float64(len(dataUji))*100 }
+			jmlU := distUjiMap[nama]; pctU := 0.0; if len(du1)>0 { pctU = float64(jmlU)/float64(len(du1))*100 }
 			distUji = append(distUji, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
 		}
 
-		// Semua warga tab dinamis
-		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih FROM warga ORDER BY id ASC")
+		distLatihMap2 := make(map[string]int)
+		for _, d := range dl2 { distLatihMap2[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+		distUjiMap2 := make(map[string]int)
+		for _, d := range du2 { distUjiMap2[classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)]]++ }
+
+		var distLatih2, distUji2 []map[string]interface{}
+		for _, nama := range urutan {
+			jml := distLatihMap2[nama]; pct := 0.0; if len(dl2)>0 { pct = float64(jml)/float64(len(dl2))*100 }
+			distLatih2 = append(distLatih2, map[string]interface{}{"Label":nama,"Count":jml,"Percent":pct})
+			jmlU := distUjiMap2[nama]; pctU := 0.0; if len(du2)>0 { pctU = float64(jmlU)/float64(len(du2))*100 }
+			distUji2 = append(distUji2, map[string]interface{}{"Label":nama,"Count":jmlU,"Percent":pctU})
+		}
+
+		// Semua warga tab dinamis (menggunakan data_latih_2)
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, label_kelas FROM warga ORDER BY id ASC")
 		defer rows2.Close()
 		var semuaWarga []map[string]interface{}
 		for rows2.Next() {
-			var id, isLatih int; var nik, nama string
-			rows2.Scan(&id, &nik, &nama, &isLatih)
+			var id, isLatih2 int; var nik, nama, labelKelas string
+			rows2.Scan(&id, &nik, &nama, &isLatih2, &labelKelas)
+			if labelKelas == "" {
+				labelKelas = "-"
+			}
 			semuaWarga = append(semuaWarga, map[string]interface{}{
-				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih==1,
+				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih2==1, "Kelas":labelKelas,
 			})
 		}
 
@@ -565,29 +739,39 @@ func main() {
 		errorUji := ""
 		if len(dataUji) == 0 { errorUji = "Data uji tidak ditemukan. Pastikan ada data dengan data_latih=0 dan label_kelas terisi." }
 
-		var jumlahLatih2 int
-		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih2)
+		dataset1 := ambilDatasetGabungan(dbSistem, 1)
+		dataset2 := ambilDatasetGabungan(dbSistem, 2)
 
 		return c.Render(http.StatusOK, "training.html", map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Stats": map[string]interface{}{
-				"TotalTraining":  len(dataLatih),
-				"TotalTesting":   len(dataUji),
-				"TotalTraining2": jumlahLatih2,
+				"TotalTraining":  len(dl1),
+				"TotalTesting":   len(du1),
+				"TotalTraining2": len(dl2),
+				"TotalTesting2":  len(du2),
 				"Accuracy":       akurasi * 100,
-				"Precision":      totP / cnt,
-				"Recall":         totR / cnt,
-				"F1Score":        totF1 / cnt,
+				"Precision":      macroP,
+				"Recall":         macroR,
+				"F1Score":        macroF1,
 				"LastTrained":    time.Now().Format("02 Jan 2006 15:04"),
 			},
-			"Matrix":          matriks,
-			"Classes":         modelNB.SemuaKelas,
-			"ErrorUji":        errorUji,
-			"HasResult":       true,
-			"ModelDipakai":    modelLabel,
-			"DistribusiLatih": distLatih,
-			"DistribusiUji":   distUji,
-			"SemuaWarga":      semuaWarga,
+			"Dataset1":         dataset1,
+			"Dataset2":         dataset2,
+			"Matrix":           matriks,
+			"RowTotals":        rowTotals,
+			"ColTotals":        colTotals,
+			"GlobalTotal":      total,
+			"Classes":          modelNB.SemuaKelas,
+			"ErrorUji":         errorUji,
+			"HasResult":        true,
+			"ModelDipakai":     modelLabel,
+			"DaftarPrediksi":   daftarPrediksi,
+			"DetailPerKelas":   detailPerKelas,
+			"DistribusiLatih":  distLatih,
+			"DistribusiUji":    distUji,
+			"DistribusiLatih2": distLatih2,
+			"DistribusiUji2":   distUji2,
+			"SemuaWarga":       semuaWarga,
 			"classifier": map[string]interface{}{"ClassNames": classifier.DaftarNamaKelas},
 		})
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
@@ -598,7 +782,7 @@ func main() {
 		peran := c.FormValue("peran")
 		isLatih := 0
 		if peran == "latih" { isLatih = 1 }
-		dbSistem.Exec("UPDATE warga SET data_latih = ? WHERE id = ?", isLatih, id)
+		dbSistem.Exec("UPDATE warga SET data_latih_2 = ? WHERE id = ?", isLatih, id)
 		return c.Redirect(http.StatusSeeOther, "/training")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -619,38 +803,58 @@ func main() {
 
 	// Laporan Rekapitulasi (Bisa diakses Admin & Operator)
 	e.GET("/laporan", func(c echo.Context) error {
-		// Mengambil semua data yang sudah terklasifikasi
-		rows, _ := dbSistem.Query(`
-			SELECT nik, nama_lengkap, alamat, label_kelas, dibuat_pada 
-			FROM warga 
-			WHERE data_latih = 1
-		`)
+		filterKelas := c.QueryParam("kategori")
+
+		// Query semua warga yang sudah memiliki label kelas (sudah terklasifikasi)
+		query := "SELECT nik, nama_lengkap, alamat, label_kelas FROM warga WHERE label_kelas != '' AND label_kelas IS NOT NULL"
+		args := []interface{}{}
+		if filterKelas != "" {
+			query += " AND label_kelas = ?"
+			args = append(args, filterKelas)
+		}
+		query += " ORDER BY label_kelas ASC, nama_lengkap ASC"
+
+		rows, err := dbSistem.Query(query, args...)
+		if err != nil {
+			rows, _ = dbSistem.Query("SELECT nik, nama_lengkap, alamat, label_kelas FROM warga WHERE label_kelas != '' AND label_kelas IS NOT NULL ORDER BY label_kelas ASC")
+		}
 		defer rows.Close()
 		
 		var rekap []map[string]interface{}
 		for rows.Next() {
-			var nik, nama, alamat, kelas, tgl string
-			rows.Scan(&nik, &nama, &alamat, &kelas, &tgl)
+			var nik, nama, alamat, kelas string
+			rows.Scan(&nik, &nama, &alamat, &kelas)
 			
-			// Konversi kode kelas (1-6) ke nama kelas yang bisa dibaca
-			var kodeKelas int
-			fmt.Sscanf(kelas, "%d", &kodeKelas)
-			namaKelas := classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(kodeKelas)]
-			if namaKelas == "" { namaKelas = "Terklasifikasi" }
-
 			rekap = append(rekap, map[string]interface{}{
 				"NIK":       nik,
 				"NamaKK":    nama,
 				"Alamat":    alamat,
-				"ClassName": namaKelas,
-				"Date":      tgl,
-				"Status":    "Data Latih",
+				"ClassName": kelas,
+				"Status":    kelas,
+				"Date":      "-",
+			})
+		}
+
+		// Hitung distribusi per kategori
+		var distribusi []map[string]interface{}
+		urutan := []string{"Sangat Miskin","Miskin","Hampir Miskin","Rentan Miskin","Pas-pasan","Menengah ke Atas"}
+		hitungPerKelas := make(map[string]int)
+		for _, r := range rekap {
+			hitungPerKelas[r["ClassName"].(string)]++
+		}
+		for _, k := range urutan {
+			distribusi = append(distribusi, map[string]interface{}{
+				"Label": k,
+				"Count": hitungPerKelas[k],
 			})
 		}
 
 		data := map[string]interface{}{
-			"User":    ambilDataPengguna(c),
-			"Results": rekap,
+			"User":         ambilDataPengguna(c),
+			"Results":      rekap,
+			"Distribusi":   distribusi,
+			"FilterKelas":  filterKelas,
+			"TotalWarga":   len(rekap),
 		}
 		return c.Render(http.StatusOK, "laporan.html", data)
 	}, middlewareAutentikasi)
@@ -670,8 +874,15 @@ func main() {
 		rt := c.FormValue("rt")
 		rw := c.FormValue("rw")
 		kelurahan := c.FormValue("kelurahan")
+		peran := c.FormValue("data_latih_2")
 
-		db.TambahWarga(dbSistem, nik, nokk, nama, alamat, rt, rw, kelurahan)
+		isLatih2 := 0
+		if peran == "1" {
+			isLatih2 = 1
+		}
+
+		dbSistem.Exec("INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, data_latih_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -679,21 +890,22 @@ func main() {
 	e.GET("/warga/edit/:id", func(c echo.Context) error {
 		id := c.Param("id")
 		var w struct {
-			ID   int
-			NIK  string
-			NoKK string
-			Nama string
-			Alm  string
-			RT   string
-			RW   string
-			Klh  string
+			ID       int
+			NIK      string
+			NoKK     string
+			Nama     string
+			Alm      string
+			RT       string
+			RW       string
+			Klh      string
+			IsLatih2 int
 		}
-		dbSistem.QueryRow("SELECT id, nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan FROM warga WHERE id = ?", id).Scan(&w.ID, &w.NIK, &w.NoKK, &w.Nama, &w.Alm, &w.RT, &w.RW, &w.Klh)
+		dbSistem.QueryRow("SELECT id, nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, data_latih_2 FROM warga WHERE id = ?", id).Scan(&w.ID, &w.NIK, &w.NoKK, &w.Nama, &w.Alm, &w.RT, &w.RW, &w.Klh, &w.IsLatih2)
 		
 		data := map[string]interface{}{
 			"User": ambilDataPengguna(c),
 			"Warga": map[string]interface{}{
-				"ID": w.ID, "NIK": w.NIK, "NoKK": w.NoKK, "NamaKK": w.Nama, "Alamat": w.Alm, "RT": w.RT, "RW": w.RW, "Kelurahan": w.Klh,
+				"ID": w.ID, "NIK": w.NIK, "NoKK": w.NoKK, "NamaKK": w.Nama, "Alamat": w.Alm, "RT": w.RT, "RW": w.RW, "Kelurahan": w.Klh, "IsLatih2": w.IsLatih2 == 1,
 			},
 		}
 		return c.Render(http.StatusOK, "warga_edit.html", data)
@@ -709,9 +921,15 @@ func main() {
 		rt := c.FormValue("rt")
 		rw := c.FormValue("rw")
 		kelurahan := c.FormValue("kelurahan")
+		peran := c.FormValue("data_latih_2")
 
-		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, kelurahan=? WHERE id=?", 
-			nik, nokk, nama, alamat, rt, rw, kelurahan, id)
+		isLatih2 := 0
+		if peran == "1" {
+			isLatih2 = 1
+		}
+
+		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, kelurahan=?, data_latih_2=? WHERE id=?", 
+			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2, id)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -847,49 +1065,101 @@ func main() {
 
 	// Mencari port yang tersedia mulai dari 8080
 	port := 8080
-	var serverErr error
+	var serverAddr string
 	for {
-		addr := fmt.Sprintf(":%d", port)
+		addr := fmt.Sprintf("127.0.0.1:%d", port)
 		// Cek apakah port bisa digunakan
 		l, err := net.Listen("tcp", addr)
 		if err == nil {
 			l.Close()
-			
-			// Membuka browser secara otomatis ke port yang ditemukan
-			go func(p int) {
-				time.Sleep(500 * time.Millisecond)
-				bukaBrowser(fmt.Sprintf("http://localhost:%d", p))
-			}(port)
-
-			fmt.Printf("Server berjalan di http://localhost:%d\n", port)
-			serverErr = e.Start(addr)
+			serverAddr = addr
 			break
 		}
 		
 		port++
 		if port > 8090 { // Coba sampai 10 port
-			serverErr = fmt.Errorf("Tidak dapat menemukan port yang tersedia antara 8080-8090")
-			break
+			e.Logger.Fatal("Tidak dapat menemukan port yang tersedia antara 8080-8090")
 		}
 	}
 
-	if serverErr != nil {
-		e.Logger.Fatal(serverErr)
-	}
-}
+	// Jalankan server di goroutine terpisah
+	go func() {
+		fmt.Printf("Server berjalan di http://%s\n", serverAddr)
+		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal(err)
+		}
+	}()
 
-// bukaBrowser membuka URL di browser default berdasarkan sistem operasi
-func bukaBrowser(url string) {
-	var err error
-	switch runtime.GOOS {
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default: // linux
-		err = exec.Command("xdg-open", url).Start()
-	}
+	// Tunggu server siap
+	time.Sleep(1 * time.Second)
+
+	appURL := fmt.Sprintf("http://127.0.0.1:%d", port)
+	
+	// Coba Lorca terlebih dahulu (desktop window tanpa browser)
+	ui, err := lorca.New(appURL, "", 1280, 800)
 	if err != nil {
-		fmt.Printf("Gagal membuka browser: %v\n", err)
+		// Lorca gagal - coba Chrome Kiosk Mode sebagai fallback
+		fmt.Printf("⚠️  Desktop window (Lorca) gagal: %v\n", err)
+		fmt.Println("🔄 Mencoba Chrome Kiosk Mode...")
+		
+		// Cari Chrome executable
+		chromePaths := []string{
+			"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+			"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+		}
+		
+		var chromeExe string
+		for _, path := range chromePaths {
+			if _, err := os.Stat(path); err == nil {
+				chromeExe = path
+				break
+			}
+		}
+		
+		if chromeExe != "" {
+			// Jalankan Chrome dalam App Mode (seperti desktop app)
+			fmt.Println("✅ Membuka Chrome App Mode...")
+			fmt.Printf("🌐 URL: %s\n", appURL)
+			
+			// Chrome app mode: seperti desktop app, tanpa address bar, tabs, dll
+			cmd := exec.Command(chromeExe,
+				"--app="+appURL,
+				"--window-size=1280,800",
+				"--disable-features=TranslateUI",
+				"--no-first-run",
+				"--no-default-browser-check",
+			)
+			
+			err = cmd.Start()
+			if err != nil {
+				fmt.Printf("❌ Gagal start Chrome: %v\n", err)
+				fmt.Println("📱 Silakan buka browser manual ke:", appURL)
+			} else {
+				fmt.Println("✅ Chrome App Mode berhasil dibuka!")
+				fmt.Println("⏹️  Tutup window Chrome untuk menghentikan aplikasi.")
+			}
+			
+			// Tunggu forever - server tetap jalan
+			select {}
+		} else {
+			// Chrome tidak ditemukan
+			fmt.Println("❌ Chrome tidak ditemukan.")
+			fmt.Printf("📱 Silakan buka browser manual ke: %s\n", appURL)
+			fmt.Println("⏹️  Tekan Ctrl+C untuk menghentikan server.")
+			
+			// Tunggu forever - server tetap jalan
+			select {}
+		}
+	} else {
+		// Lorca berhasil!
+		defer ui.Close()
+		
+		fmt.Println("✅ Desktop window (Lorca) berhasil dibuat!")
+		fmt.Println("⏹️  Tutup window untuk menghentikan aplikasi.")
+		
+		// Tunggu sampai window ditutup
+		<-ui.Done()
 	}
+	
+	fmt.Println("👋 Aplikasi dihentikan.")
 }

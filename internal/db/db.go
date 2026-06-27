@@ -67,8 +67,8 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 		}
 	}
 
-	// Cek apakah kolom idpengguna sudah ada di tabel warga (untuk database lama)
-	var kolomAda bool
+	// Cek apakah kolom idpengguna dan data_latih_2 sudah ada di tabel warga (untuk database lama)
+	var kolomAda, kolomLatih2Ada bool
 	rows, err := db.Query("PRAGMA table_info(warga)")
 	if err == nil {
 		defer rows.Close()
@@ -80,7 +80,9 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 			if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt_value, &pk); err == nil {
 				if name == "idpengguna" {
 					kolomAda = true
-					break
+				}
+				if name == "data_latih_2" {
+					kolomLatih2Ada = true
 				}
 			}
 		}
@@ -88,6 +90,10 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 	if !kolomAda {
 		// Tambahkan kolom idpengguna jika belum ada
 		db.Exec("ALTER TABLE warga ADD COLUMN idpengguna INTEGER REFERENCES pengguna(id)")
+	}
+	if !kolomLatih2Ada {
+		// Tambahkan kolom data_latih_2 jika belum ada
+		db.Exec("ALTER TABLE warga ADD COLUMN data_latih_2 INTEGER DEFAULT 0")
 	}
 
 	return db, nil // Mengembalikan instance database yang siap digunakan
@@ -101,10 +107,19 @@ type DataLatih struct {
 	Indikator map[string]string
 }
 
-// AmbilDataLatih mengambil semua data dari tabel warga yang ditandai sebagai data_latih = 1
+// AmbilDataLatih mengambil semua data dari tabel warga yang ditandai sebagai data_latih = 1 (Split 1)
 func AmbilDataLatih(db *sql.DB) ([]DataLatih, error) {
-	// Mengambil data warga yang sudah memiliki label kelas
-	rows, err := db.Query("SELECT id, nama_lengkap, label_kelas FROM warga WHERE data_latih = 1")
+	return AmbilDataLatihSplit(db, 1)
+}
+
+// AmbilDataLatihSplit mengambil data training dari tabel warga berdasarkan split (1 atau 2)
+func AmbilDataLatihSplit(db *sql.DB, split int) ([]DataLatih, error) {
+	kolomLatih := "data_latih"
+	if split == 2 {
+		kolomLatih = "data_latih_2"
+	}
+	query := fmt.Sprintf("SELECT id, nama_lengkap, label_kelas FROM warga WHERE %s = 1", kolomLatih)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -153,10 +168,19 @@ func AmbilDataLatih(db *sql.DB) ([]DataLatih, error) {
 	return daftarData, nil
 }
 
-// AmbilDataUji mengambil semua data dari tabel warga yang ditandai sebagai data_latih = 0 (Data Uji) dan memiliki label_kelas untuk keperluan evaluasi
+// AmbilDataUji mengambil semua data dari tabel warga yang ditandai sebagai data_latih = 0 (Data Uji Split 1) dan memiliki label_kelas untuk keperluan evaluasi
 func AmbilDataUji(db *sql.DB) ([]DataLatih, error) {
-	// Mengambil data warga yang merupakan data uji dan sudah memiliki label kelas
-	rows, err := db.Query("SELECT id, nama_lengkap, label_kelas FROM warga WHERE data_latih = 0 AND label_kelas != ''")
+	return AmbilDataUjiSplit(db, 1)
+}
+
+// AmbilDataUjiSplit mengambil data uji berdasarkan split (1 atau 2)
+func AmbilDataUjiSplit(db *sql.DB, split int) ([]DataLatih, error) {
+	kolomLatih := "data_latih"
+	if split == 2 {
+		kolomLatih = "data_latih_2"
+	}
+	query := fmt.Sprintf("SELECT id, nama_lengkap, label_kelas FROM warga WHERE %s = 0 AND label_kelas != ''", kolomLatih)
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}

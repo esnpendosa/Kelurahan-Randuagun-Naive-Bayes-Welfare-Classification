@@ -8,6 +8,43 @@ Dilengkapi tombol cetak untuk mencetak laporan klasifikasi individu warga terseb
 {{define "header"}}Prediksi Tingkat Kesejahteraan{{end}}
 
 {{define "content"}}
+<style>
+    @media print {
+        /* Sembunyikan elemen non-cetak */
+        .sidebar, .topbar, .btn, button, footer, header {
+            display: none !important;
+        }
+        
+        /* Maksimalkan area konten */
+        .main-wrapper {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            background: white !important;
+        }
+        .content {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Format kartu agar pas di kertas A4 */
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 20px !important;
+            margin: 0 !important;
+            background: white !important;
+        }
+        
+        /* Pastikan warna bar probabilitas ikut tercetak */
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: white !important;
+        }
+    }
+</style>
+
 <div class="card" style="text-align: center; padding: 48px;">
     <p style="color: var(--text-muted); margin-bottom: 8px;">Hasil Klasifikasi untuk Keluarga</p>
     <h2 style="font-size: 1.5rem; margin-bottom: 24px;">{{.Warga.NamaKK}} ({{.Warga.NIK}})</h2>

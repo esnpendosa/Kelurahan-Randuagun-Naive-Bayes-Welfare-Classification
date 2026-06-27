@@ -1,0 +1,105 @@
+========================================
+CARA TEST APLIKASI DESKTOP
+========================================
+
+File aplikasi: Klasifikasi-Warga-Randuagung.exe
+Lokasi: Folder project
+
+========================================
+LANGKAH 1: CEK CHROME/EDGE
+========================================
+
+Double-click file: check-chrome.bat
+
+File ini akan cek apakah Chrome atau Edge terinstall.
+
+Jika TIDAK ADA Chrome/Edge:
+- Install Google Chrome: https://www.google.com/chrome/
+- Atau update Microsoft Edge (biasanya sudah ada di Windows 10/11)
+
+========================================
+LANGKAH 2: TEST RUN APLIKASI
+========================================
+
+CARA A - Double Click Langsung:
+1. Double-click file: Klasifikasi-Warga-Randuagung.exe
+2. Tunggu beberapa detik
+3. Seharusnya muncul window aplikasi
+
+CARA B - Pakai Batch File (Lihat Error):
+1. Double-click file: test-run.bat
+2. Jika ada error, akan tampil di console
+3. Screenshot error dan kasih tau saya
+
+========================================
+KEMUNGKINAN MASALAH & SOLUSI
+========================================
+
+MASALAH 1: Aplikasi tidak muncul sama sekali
+SOLUSI:
+- Cek apakah Chrome/Edge terinstall (jalankan check-chrome.bat)
+- Install Chrome jika belum ada
+- Coba lagi
+
+MASALAH 2: Error "Chrome not found"
+SOLUSI:
+- Install Google Chrome
+- Restart komputer
+- Coba lagi
+
+MASALAH 3: Window muncul sebentar lalu hilang
+SOLUSI:
+- Jalankan pakai test-run.bat untuk lihat error
+- Kemungkinan port 8080 sudah dipakai aplikasi lain
+- Atau database error
+
+MASALAH 4: Masih buka browser eksternal
+SOLUSI:
+- File .exe yang Anda jalankan adalah versi lama
+- Pastikan jalankan file yang baru (cek tanggal: 27/6/2026 10:45 AM)
+- Atau build ulang dengan rebuild.bat
+
+MASALAH 5: Antivirus block
+SOLUSI:
+- Antivirus mungkin block file .exe baru
+- Add exception untuk file ini di antivirus
+- Atau disable antivirus sementara untuk test
+
+========================================
+DEBUG MODE
+========================================
+
+Jika perlu lihat console output untuk debug:
+
+1. Buka Command Prompt (CMD)
+2. Navigate ke folder project:
+   cd C:\laragon\www\Kelurahan-Randuagun-Naive-Bayes-Welfare-Classification-master
+3. Jalankan:
+   Klasifikasi-Warga-Randuagung.exe
+4. Lihat output di console
+5. Screenshot error jika ada
+
+========================================
+INFO APLIKASI
+========================================
+
+Teknologi: Lorca (Chrome embedded window)
+Ukuran File: ~18 MB
+Requires: Chrome atau Edge terinstall
+Port: 8080 (otomatis cari port kosong jika 8080 dipakai)
+Database: data_skripsi.db (auto-create)
+
+========================================
+KONTAK
+========================================
+
+Jika masih tidak bisa:
+1. Jalankan test-run.bat
+2. Screenshot error yang muncul
+3. Jalankan check-chrome.bat
+4. Screenshot hasilnya
+5. Kasih tau saya kedua screenshot tersebut
+
+Saya akan bantu troubleshoot lebih lanjut!
+
+========================================

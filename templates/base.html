@@ -1,82 +1,97 @@
-{{/* 
-Template Induk (Base Layout)
-Ini adalah layout utama yang digunakan oleh semua halaman (kecuali login dan register).
-Berisi struktur HTML dasar, sidebar navigasi, header atas (topbar), dan script aktifasi menu.
+{{/*
+Base Layout v3.0 — Clean Professional
 */}}
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Menampilkan judul halaman dinamis berdasarkan definisi sub-template "title" -->
-    <title>{{template "title" .}} - Kelurahan Randuagung</title>
+    <title>{{template "title" .}} — Klasifikasi Kesejahteraan Randuagung</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
+    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h2>RANDUAGUNG</h2>
-            <p style="font-size: 0.75rem; color: var(--text-muted);">Sistem Naive Bayes</p>
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-dot"></div>
+                <div>
+                    <h2>Randuagung</h2>
+                    <p>Sistem Naive Bayes</p>
+                </div>
+            </div>
         </div>
-        <nav class="nav-links">
-            <a href="/" id="nav-dashboard">Dashboard</a>
-            {{if eq .User.Role "Admin"}}
-            <a href="/warga" id="nav-warga">Data Warga</a>
-            {{end}}
-            <a href="/klasifikasi" id="nav-klasifikasi">Klasifikasi Baru</a>
-            {{if eq .User.Role "Admin"}}
-            <a href="/training" id="nav-training">Training Model</a>
-            {{end}}
-            <a href="/laporan" id="nav-laporan">Laporan</a>
-            {{if eq .User.Role "Admin"}}
-            <a href="/users" id="nav-users">Pengaturan Akun</a>
-            {{end}}
-        </nav>
-        <div class="sidebar-footer" style="padding-top: 20px; border-top: 1px solid var(--border);">
-            <p style="font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">&copy; 2026 Arina </p>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">v1.0.0 Desktop Web</p>
+
+        <div class="nav-section">
+            <nav class="nav-links">
+                <a href="/" id="nav-dashboard">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Dashboard
+                </a>
+                {{if eq .User.Role "Admin"}}
+                <a href="/warga" id="nav-warga">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Data Warga
+                </a>
+                {{end}}
+                <a href="/klasifikasi" id="nav-klasifikasi">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    Klasifikasi Baru
+                </a>
+                {{if eq .User.Role "Admin"}}
+                <a href="/training" id="nav-training">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Training & Evaluasi
+                </a>
+                {{end}}
+                <a href="/laporan" id="nav-laporan">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Laporan
+                </a>
+                {{if eq .User.Role "Admin"}}
+                <a href="/users" id="nav-users">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Pengaturan Akun
+                </a>
+                {{end}}
+            </nav>
+        </div>
+
+        <div class="sidebar-footer">
+            <p>© 2026 Kelurahan Randuagung</p>
+            <p>v2.0 — Naive Bayes Classifier</p>
         </div>
     </aside>
 
+    <!-- Main -->
     <div class="main-wrapper">
         <header class="topbar">
-            <div>
-                <h1 style="font-size: 1.125rem; font-weight: 600;">{{template "header" .}}</h1>
-            </div>
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <div style="text-align: right; border-right: 1px solid var(--border); padding-right: 20px;">
-                    <p style="font-size: 0.875rem; font-weight: 700; color: var(--text-main); line-height: 1;">
-                        {{.User.Name}}</p>
-                    <p
-                        style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">
-                        {{.User.Role}}</p>
+            <div class="topbar-title">{{template "header" .}}</div>
+            <div class="topbar-actions">
+                <div class="topbar-user">
+                    <p class="user-name">{{.User.Name}}</p>
+                    <p class="user-role">{{.User.Role}}</p>
                 </div>
-                <a href="/logout" class="btn btn-sm"
-                    style="background: #991b1b; color: white; border: 1px solid #fecaca; text-decoration: none; padding: 6px 16px; border-radius: 4px; font-size: 0.8rem;">Logout</a>
+                <a href="/logout" class="btn btn-secondary btn-sm">Keluar</a>
             </div>
         </header>
-
         <main class="content">
             {{template "content" .}}
         </main>
     </div>
 
     <script>
-        // Logika untuk menandai menu aktif di sidebar
         const path = window.location.pathname;
-        const links = document.querySelectorAll('.nav-links a');
-        links.forEach(link => {
-            if (path === link.getAttribute('href')) {
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href === '/' ? path === '/' : path.startsWith(href)) {
                 link.classList.add('active');
             }
         });
     </script>
 </body>
-
 </html>

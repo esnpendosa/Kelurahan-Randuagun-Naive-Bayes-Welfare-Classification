@@ -8,13 +8,22 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
 {{define "header"}}Data Kependudukan Randuagung{{end}}
 
 {{define "content"}}
-<div class="card" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; gap: 12px;">
-        <input type="text" placeholder="Cari NIK atau Nama..." style="width: 300px;">
-        <button class="btn btn-secondary">Cari</button>
+<div class="card" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="search-warga" placeholder="Cari NIK atau Nama..." style="width: 250px;" onkeyup="filterWargaTable()">
+        <select id="filter-kelas-warga" style="width: 210px; padding: 7px 10px;" onchange="filterWargaTable()">
+            <option value="ALL">Semua Kelas Kesejahteraan</option>
+            <option value="Sangat Miskin">Sangat Miskin</option>
+            <option value="Miskin">Miskin</option>
+            <option value="Hampir Miskin">Hampir Miskin</option>
+            <option value="Rentan Miskin">Rentan Miskin</option>
+            <option value="Pas-pasan">Pas-pasan</option>
+            <option value="Menengah ke Atas">Menengah ke Atas</option>
+            <option value="-">Belum Klasifikasi (-)</option>
+        </select>
     </div>
-    <div style="display: flex; gap: 8px;">
-        <form action="/import/warga" method="POST" enctype="multipart/form-data" style="display: flex; gap: 4px; align-items: center; border: 1px dashed var(--border); padding: 4px 8px; border-radius: var(--radius);">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <form action="/import/warga" method="POST" enctype="multipart/form-data" style="display: flex; gap: 4px; align-items: center; border: 1px dashed var(--border); padding: 4px 8px; border-radius: var(--radius); margin: 0;">
             <input type="file" name="excel_file" accept=".xlsx" style="font-size: 0.75rem; width: 180px;" required>
             <button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Import</button>
         </form>
@@ -30,22 +39,26 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
     <table>
         <thead>
             <tr>
-                <th width="180">NIK</th>
+                <th width="160">NIK</th>
                 <th>Nama Lengkap</th>
                 <th>Alamat</th>
                 <th>Kelurahan</th>
-                <th class="text-right">Aksi</th>
+                <th width="180" style="text-align: center;">Kesejahteraan</th>
+                <th class="text-right" width="220">Aksi</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="table-warga-body">
             {{range .Warga}}
-            <tr>
+            <tr data-name="{{.NamaKK}}" data-nik="{{.NIK}}" data-kelas="{{.Kelas}}">
                 <td style="font-family: monospace; font-size: 0.8rem;">{{.NIK}}</td>
                 <td>
                     <span style="font-weight: 600;">{{.NamaKK}}</span>
                 </td>
                 <td>{{.Alamat}}</td>
                 <td>{{.Kelurahan}}</td>
+                <td style="text-align: center;">
+                    <span class="badge badge-{{badgeClass .Kelas}}">{{.Kelas}}</span>
+                </td>
                 <td class="text-right">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
                         <a href="/warga/edit/{{.ID}}" class="btn btn-sm btn-warning">Edit</a>
@@ -56,10 +69,36 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
             </tr>
             {{else}}
             <tr>
-                <td colspan="5" style="text-align: center; padding: 48px; color: var(--text-muted);">Belum ada data warga. Silakan tambah atau import data.</td>
+                <td colspan="6" style="text-align: center; padding: 48px; color: var(--text-muted);">Belum ada data warga. Silakan tambah atau import data.</td>
             </tr>
             {{end}}
         </tbody>
     </table>
 </div>
+
+<script>
+    function filterWargaTable() {
+        const searchVal = document.getElementById('search-warga').value.toLowerCase();
+        const filterVal = document.getElementById('filter-kelas-warga').value;
+        const rows = document.querySelectorAll('#table-warga-body tr');
+        
+        rows.forEach(row => {
+            // Skip baris kosong jika tidak ada data sama sekali
+            if (row.cells.length < 6) return;
+            
+            const name = row.getAttribute('data-name').toLowerCase();
+            const nik = row.getAttribute('data-nik').toLowerCase();
+            const kelas = row.getAttribute('data-kelas');
+            
+            const matchesSearch = name.includes(searchVal) || nik.includes(searchVal);
+            const matchesFilter = (filterVal === 'ALL') || (kelas === filterVal);
+            
+            if (matchesSearch && matchesFilter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
 {{end}}

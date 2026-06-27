@@ -1,0 +1,98 @@
+========================================
+QUICK START - APLIKASI DESKTOP WINDOWS
+========================================
+
+PERUBAHAN YANG DIBUAT:
+✅ Aplikasi sekarang native Windows desktop
+✅ TIDAK lagi membuka browser eksternal
+✅ Window aplikasi sendiri (menggunakan Chrome embedded)
+
+LANGKAH BUILD:
+
+1. INSTALL Chrome/Edge (sudah ada di Windows):
+   
+   Lorca menggunakan browser engine yang sudah terinstall di Windows:
+   - Chrome (recommended) ATAU
+   - Edge (fallback)
+   
+   Biasanya sudah ada, tidak perlu install apapun!
+
+2. BUILD APLIKASI:
+   
+   Cara 1 (Mudah):
+   > build.bat
+   
+   Cara 2 (Manual):
+   > go mod tidy
+   > go build -ldflags "-H=windowsgui -s -w" -o Klasifikasi-Warga-Randuagung.exe main.go
+
+3. JALANKAN:
+   
+   Double-click: Klasifikasi-Warga-Randuagung.exe
+   
+   Aplikasi akan buka di window sendiri (menggunakan Chrome engine)
+
+========================================
+TROUBLESHOOTING
+========================================
+
+❌ Error: "Chrome not found"
+✅ Solusi: Install Google Chrome dari: https://www.google.com/chrome/
+
+❌ Masih buka browser biasa
+✅ Solusi: Build ulang setelah update kode
+   > del Klasifikasi-Warga-Randuagung.exe
+   > build.bat
+
+❌ Error saat compile
+✅ Solusi: 
+   > go clean
+   > go mod tidy
+   > build.bat
+
+========================================
+FILE YANG DIUBAH
+========================================
+
+1. main.go
+   - Tambah: import "github.com/zserge/lorca"
+   - Ganti: bukaBrowser() dengan lorca.New()
+   
+2. go.mod
+   - Tambah: github.com/zserge/lorca
+   
+3. build.bat
+   - Tambah: go mod tidy sebelum build
+   - Update: pesan sukses
+
+========================================
+HASIL AKHIR
+========================================
+
+File output: Klasifikasi-Warga-Randuagung.exe
+Ukuran window: 1280 x 800 pixels
+Engine: Chrome (embedded)
+Database: data_skripsi.db (auto-create)
+
+DISTRIBUSI:
+Cukup copy file .exe saja!
+User harus punya Chrome atau Edge terinstall.
+
+========================================
+KELEBIHAN LORCA
+========================================
+
+✅ Tidak perlu GCC/MinGW
+✅ Tidak perlu WebView2 runtime
+✅ Build lebih cepat
+✅ Menggunakan Chrome yang sudah ada
+✅ Ukuran file lebih kecil
+
+========================================
+KONTAK
+========================================
+
+Jika ada masalah, test dulu dan beri feedback.
+Saya akan perbaiki jika ada error.
+
+========================================

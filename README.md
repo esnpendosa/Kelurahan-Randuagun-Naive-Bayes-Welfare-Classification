@@ -4,11 +4,11 @@ Aplikasi klasifikasi tingkat kesejahteraan masyarakat menggunakan algoritma **Na
 
 ## Fitur Utama
 - **Dashboard**: Visualisasi statistik kependudukan, akurasi model, dan distribusi kelas.
-- **Data Warga**: Manajemen data kependudukan (CRUD) dan fitur import dari Excel.
-- **Klasifikasi Baru**: Melakukan prediksi klasifikasi warga secara real-time.
-- **Training & Evaluasi Model**: Evaluasi performa algoritma Naive Bayes menggunakan data uji dengan Confusion Matrix.
-- **Laporan**: Rekapitulasi hasil klasifikasi yang dapat diekspor ke format Excel.
-- **Pengaturan Akun**: Pengaturan akun akses admin.
+- **Data Warga**: Manajemen data kependudukan (CRUD), pencarian real-time, filter kategori kesejahteraan instan, serta fitur import/export dari/ke Excel.
+- **Klasifikasi Baru**: Melakukan prediksi klasifikasi warga secara real-time dengan formulir indikator (IM1-IM36) yang otomatis terisi jika data warga sudah ada di database.
+- **Training & Evaluasi Model**: Evaluasi performa algoritma Naive Bayes (Dataset 1 & Dataset 2) dengan format Confusion Matrix 6x6, Akurasi, Precision, Recall, dan F1-Score yang identik dengan Excel, serta manajemen peran warga (data latih vs data uji) secara dinamis.
+- **Laporan**: Rekapitulasi hasil klasifikasi warga terklasifikasi dengan fitur print-ready ramah kertas (tanpa sidebar/topbar) dan export ke Excel.
+- **Pengaturan Akun**: Manajemen akses user (Admin & Operator).
 
 ---
 

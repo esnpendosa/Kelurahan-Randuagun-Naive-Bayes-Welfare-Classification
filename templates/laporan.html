@@ -1,18 +1,86 @@
 {{/*
 Halaman Laporan Rekapitulasi (laporan.html)
 Halaman ini menampilkan seluruh riwayat hasil klasifikasi warga yang telah diproses.
-Menyediakan daftar tabel rekapitulasi kesejahteraan warga dan tombol ekspor data laporan ke format Excel (.xlsx).
+Menyediakan filter per kategori kesejahteraan dan tabel rekapitulasi lengkap.
 */}}
 {{define "title"}}Laporan Klasifikasi{{end}}
 {{define "header"}}Rekapitulasi Kesejahteraan Masyarakat{{end}}
 
 {{define "content"}}
+<style>
+    @media print {
+        /* Sembunyikan elemen non-cetak */
+        .sidebar, .topbar, .btn, button, footer, header, .grid {
+            display: none !important;
+        }
+        
+        /* Maksimalkan area konten */
+        .main-wrapper {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            background: white !important;
+        }
+        .content {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Format kartu agar pas di kertas A4 */
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 20px !important;
+            margin: 0 !important;
+            background: white !important;
+        }
+        
+        /* Pastikan badge warna ikut tercetak */
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: white !important;
+        }
+    }
+</style>
+
+<!-- Ringkasan Distribusi Kelas -->
+<div class="grid" style="grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 24px;">
+    {{range .Distribusi}}
+    <a href="/laporan?kategori={{.Label}}" style="text-decoration:none;">
+        <div style="text-align:center; padding:14px 8px; border:2px solid {{if eq $.FilterKelas .Label}}var(--primary){{else}}var(--border){{end}}; border-radius:var(--radius); background:{{if eq $.FilterKelas .Label}}var(--primary-light){{else}}white{{end}}; cursor:pointer; transition:all 0.2s;">
+            <p style="font-size:0.65rem; color:var(--text-muted); margin-bottom:4px; line-height:1.3;">{{.Label}}</p>
+            <p style="font-size:1.4rem; font-weight:800; color:{{if eq $.FilterKelas .Label}}var(--primary-dark){{else}}var(--text-main){{end}};">{{.Count}}</p>
+        </div>
+    </a>
+    {{end}}
+</div>
+
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <h3>Data Laporan Kesejahteraan</h3>
-        <div style="display: flex; gap: 12px;">
-            <button class="btn btn-secondary">Filter Data</button>
-            <a href="/export/laporan" class="btn btn-primary">Export Excel</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap:wrap; gap:12px;">
+        <div>
+            <h3 style="margin:0;">Data Klasifikasi Kesejahteraan</h3>
+            {{if .FilterKelas}}
+            <p style="margin-top:6px; font-size:0.82rem; color:var(--text-muted);">
+                Filter aktif: <strong style="color:var(--primary);">{{.FilterKelas}}</strong> — {{.TotalWarga}} warga
+                <a href="/laporan" style="margin-left:10px; color:#991b1b; font-size:0.8rem;">✕ Hapus filter</a>
+            </p>
+            {{else}}
+            <p style="margin-top:6px; font-size:0.82rem; color:var(--text-muted);">Menampilkan {{.TotalWarga}} warga terklasifikasi</p>
+            {{end}}
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap:wrap;">
+            <!-- Filter Buttons -->
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <a href="/laporan" class="btn btn-sm {{if not .FilterKelas}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Semua</a>
+                <a href="/laporan?kategori=Sangat Miskin" class="btn btn-sm {{if eq .FilterKelas "Sangat Miskin"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Sangat Miskin</a>
+                <a href="/laporan?kategori=Miskin" class="btn btn-sm {{if eq .FilterKelas "Miskin"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Miskin</a>
+                <a href="/laporan?kategori=Hampir Miskin" class="btn btn-sm {{if eq .FilterKelas "Hampir Miskin"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Hampir Miskin</a>
+                <a href="/laporan?kategori=Rentan Miskin" class="btn btn-sm {{if eq .FilterKelas "Rentan Miskin"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Rentan Miskin</a>
+                <a href="/laporan?kategori=Pas-pasan" class="btn btn-sm {{if eq .FilterKelas "Pas-pasan"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Pas-pasan</a>
+                <a href="/laporan?kategori=Menengah ke Atas" class="btn btn-sm {{if eq .FilterKelas "Menengah ke Atas"}}btn-primary{{else}}btn-secondary{{end}}" style="font-size:0.78rem; padding:6px 14px;">Menengah ke Atas</a>
+            </div>
+            <a href="/export/laporan" class="btn btn-primary" style="white-space:nowrap;">Export Excel</a>
         </div>
     </div>
 
@@ -23,27 +91,23 @@ Menyediakan daftar tabel rekapitulasi kesejahteraan warga dan tombol ekspor data
                 <th>NIK</th>
                 <th>Nama Lengkap</th>
                 <th>Alamat</th>
-                <th>Hasil Klasifikasi</th>
-                <th>Keterangan</th>
-                <th>Tanggal</th>
+                <th>Kategori Kesejahteraan</th>
             </tr>
         </thead>
         <tbody>
             {{range $i, $res := .Results}}
             <tr>
                 <td>{{inc $i}}</td>
-                <td style="font-family: monospace;">{{.NIK}}</td>
+                <td style="font-family: monospace; font-size:0.8rem;">{{.NIK}}</td>
                 <td style="font-weight: 600;">{{.NamaKK}}</td>
-                <td>{{.Alamat}}</td>
+                <td style="font-size:0.85rem;">{{.Alamat}}</td>
                 <td><span class="badge badge-{{badgeClass .ClassName}}">{{.ClassName}}</span></td>
-                <td>
-                    <span class="badge" style="background: #f1f5f9; color: #475569; text-transform: none; font-weight: 500;">{{.Status}}</span>
-                </td>
-                <td>{{.Date}}</td>
             </tr>
             {{else}}
             <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 32px;">Belum ada data laporan yang tersedia.</td>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 48px;">
+                    {{if .FilterKelas}}Tidak ada warga dengan kategori <strong>{{.FilterKelas}}</strong>.{{else}}Belum ada data klasifikasi. Lakukan klasifikasi warga terlebih dahulu.{{end}}
+                </td>
             </tr>
             {{end}}
         </tbody>
