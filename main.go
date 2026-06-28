@@ -1,11 +1,13 @@
 package main // Paket utama sebagai titik masuk (entry point) aplikasi
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"                    // Mengimpor paket untuk format teks dan output
 	"html/template"          // Mengimpor paket untuk mesin template HTML
 	"io"                     // Mengimpor paket untuk operasi input/output
 	"net/http"               // Mengimpor paket untuk protokol HTTP
+	"strconv"                // Mengimpor paket untuk konversi string-angka
 	"time"                   // Mengimpor paket untuk penanganan waktu
 	"encoding/json"          // Mengimpor paket untuk enkripsi/dekripsi JSON
 
@@ -327,7 +329,20 @@ func main() {
 	// Daftar Warga (Khusus Admin)
 	e.GET("/warga", func(c echo.Context) error {
 		// Mengambil semua data warga diurutkan berdasarkan status data latih
-		rows, err := dbSistem.Query("SELECT id, nik, no_kk, nama_lengkap, alamat, kelurahan, data_latih, label_kelas FROM warga ORDER BY data_latih DESC, id ASC")
+		rows, err := dbSistem.Query(`
+			SELECT 
+				w.id, w.nik, w.no_kk, w.nama_lengkap, w.alamat, w.kelurahan, w.data_latih, w.label_kelas,
+				h.nama_kelas
+			FROM warga w
+			LEFT JOIN (
+				SELECT h1.warga_id, h1.nama_kelas 
+				FROM hasil_klasifikasi h1
+				INNER JOIN (
+					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
+				) h2 ON h1.id = h2.max_id
+			) h ON w.id = h.warga_id
+			ORDER BY w.data_latih DESC, w.id ASC
+		`)
 		if err != nil {
 			return err
 		}
@@ -337,12 +352,14 @@ func main() {
 		for rows.Next() {
 			var id, isLatih int
 			var nik, nokk, nama, alamat, kelurahan string
-			var labelKelas sql.NullString
-			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas); err != nil {
+			var labelKelas, hasilPrediksi sql.NullString
+			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas, &hasilPrediksi); err != nil {
 				continue
 			}
 			kelasStr := "-"
-			if labelKelas.Valid && labelKelas.String != "" {
+			if hasilPrediksi.Valid && hasilPrediksi.String != "" {
+				kelasStr = hasilPrediksi.String
+			} else if labelKelas.Valid && labelKelas.String != "" {
 				kelasStr = labelKelas.String
 			}
 			daftarWarga = append(daftarWarga, map[string]interface{}{
@@ -462,8 +479,8 @@ func main() {
 									for col := 1; col <= 6; col++ {
 										if col < len(evalRow) {
 											valStr := strings.TrimSpace(evalRow[col])
-											var valFloat float64
-											fmt.Sscanf(valStr, "%f", &valFloat)
+											valStr = strings.ReplaceAll(valStr, ",", ".")
+											valFloat, _ := strconv.ParseFloat(valStr, 64)
 											peluang[classifier.KelasKesejahteraan(col)] = valFloat
 										}
 									}
@@ -486,8 +503,8 @@ func main() {
 			}
 		}
 
-		// Update label kelas warga di database
-		dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", prediksiKelas, idWarga)
+		// Keterangan skripsi: jangan update warga.label_kelas saat klasifikasi agar data aktual (sebelum klasifikasi) tetap utuh untuk training & evaluasi.
+		// dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", prediksiKelas, idWarga)
 
 		// Simpan hasil klasifikasi ke database
 		peluangJSON, _ := json.Marshal(peluang)
@@ -1104,10 +1121,18 @@ func main() {
 			barisKe++
 		}
 
-		// Mengirim file Excel sebagai unduhan di browser
+		// Set active sheet
+		f.SetActiveSheet(0)
+
+		var buf bytes.Buffer
+		if err := f.Write(&buf); err != nil {
+			return err
+		}
+
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Response().Header().Set("Content-Disposition", "attachment; filename=laporan_kesejahteraan.xlsx")
-		return f.Write(c.Response().Writer)
+		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi)
 
 	// Export Data Warga ke Excel (Mendukung Export 36 Indikator)
@@ -1179,9 +1204,18 @@ func main() {
 			barisKe++
 		}
 
+		// Set active sheet
+		f.SetActiveSheet(0)
+
+		var buf bytes.Buffer
+		if err := f.Write(&buf); err != nil {
+			return err
+		}
+
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Response().Header().Set("Content-Disposition", "attachment; filename=data_warga_export.xlsx")
-		return f.Write(c.Response().Writer)
+		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
 	// Download Template Import Excel (Termasuk IM1-IM36)
@@ -1212,9 +1246,18 @@ func main() {
 			f.SetCellValue(lembar, cell, v)
 		}
 
+		// Set active sheet
+		f.SetActiveSheet(0)
+
+		var buf bytes.Buffer
+		if err := f.Write(&buf); err != nil {
+			return err
+		}
+
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 		c.Response().Header().Set("Content-Disposition", "attachment; filename=Template_Import_Warga.xlsx")
-		return f.Write(c.Response().Writer)
+		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
 	// Import Data Warga dari Excel (Mendukung format Skripsi & format Template Standar)
@@ -1329,8 +1372,8 @@ func main() {
 										for col := 1; col <= 6; col++ {
 											if col < len(evalRow) {
 												valStr := strings.TrimSpace(evalRow[col])
-												var valFloat float64
-												fmt.Sscanf(valStr, "%f", &valFloat)
+												valStr = strings.ReplaceAll(valStr, ",", ".")
+												valFloat, _ := strconv.ParseFloat(valStr, 64)
 												probabilities[classifier.KelasKesejahteraan(col)] = valFloat
 											}
 										}
@@ -1347,8 +1390,8 @@ func main() {
 				kk := fmt.Sprintf("350801%010d", i+10000)
 				alamat := "Dusun Randuagung RT 01 RW 01"
 
-				// Untuk data warga, simpan hasil prediksi jika dia adalah data uji
-				res, err := stmtWarga.Exec(nik, kk, name, alamat, predictedClassName)
+				// Untuk data warga, simpan kelas aktual (className) agar training & evaluasi tetap konsisten
+				res, err := stmtWarga.Exec(nik, kk, name, alamat, className)
 				if err != nil {
 					tx.Rollback()
 					return err
