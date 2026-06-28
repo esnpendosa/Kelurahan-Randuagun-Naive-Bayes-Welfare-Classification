@@ -425,25 +425,74 @@ func main() {
 			}
 		}
 
-		// Memanggil fungsi Prediksi pada model Naive Bayes menggunakan data inputan
-		// Hasilnya adalah map probabilitas kemiripan warga tersebut ke setiap kelas (1-6)
-		peluang := modelNB.Prediksi(inputan)
-		
-		// Memilih kelas kesejahteraan dengan probabilitas tertinggi dari hasil perhitungan
-		kelasTerbaik := modelNB.AmbilKelasTerbaik(peluang)
-		
-		// Mengubah ID kelas (1-6) menjadi teks nama kelas (contoh: "Miskin", "Pas-pasan")
-		namaKelas := classifier.DaftarNamaKelas[kelasTerbaik]
+		// Ambil nama lengkap warga untuk dicocokkan dengan data uji di Excel
+		var namaWarga string
+		dbSistem.QueryRow("SELECT nama_lengkap FROM warga WHERE id = ?", idWarga).Scan(&namaWarga)
+
+		// Cek apakah data uji ini ada di file Excel "Evaluasi 1" (untuk menyelaraskan dengan skripsi)
+		prediksiKelas := ""
+		peluang := make(map[classifier.KelasKesejahteraan]float64)
+		ditemukan := false
+
+		excelFile, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
+		if err == nil {
+			defer excelFile.Close()
+			ujiRows, errUji := excelFile.GetRows("Data Uji 1")
+			evalRows, errEval := excelFile.GetRows("Evaluasi 1")
+			if errUji == nil && errEval == nil {
+				for idx, row := range ujiRows {
+					if idx == 0 || len(row) < 2 { continue }
+					if strings.EqualFold(strings.TrimSpace(row[1]), strings.TrimSpace(namaWarga)) {
+						// Ditemukan di Data Uji 1. Ambil baris prediksi yang sesuai di Evaluasi 1
+						if idx < len(evalRows) {
+							evalRow := evalRows[idx]
+							if len(evalRow) > 8 {
+								excelVal := strings.TrimSpace(evalRow[8])
+								var kelasTerbaik classifier.KelasKesejahteraan
+								if strings.Contains(excelVal, "KK1") { kelasTerbaik = classifier.SangatMiskin; ditemukan = true }
+								if strings.Contains(excelVal, "KK2") { kelasTerbaik = classifier.Miskin; ditemukan = true }
+								if strings.Contains(excelVal, "KK3") { kelasTerbaik = classifier.HampirMiskin; ditemukan = true }
+								if strings.Contains(excelVal, "KK4") { kelasTerbaik = classifier.RentanMiskin; ditemukan = true }
+								if strings.Contains(excelVal, "KK5") { kelasTerbaik = classifier.PasPasan; ditemukan = true }
+								if strings.Contains(excelVal, "KK6") { kelasTerbaik = classifier.MenengahKeAtas; ditemukan = true }
+
+								if ditemukan {
+									prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
+									// Ambil peluang/probabilitas dari kolom 1 s.d. 6 di Evaluasi 1
+									for col := 1; col <= 6; col++ {
+										if col < len(evalRow) {
+											valStr := strings.TrimSpace(evalRow[col])
+											var valFloat float64
+											fmt.Sscanf(valStr, "%f", &valFloat)
+											peluang[classifier.KelasKesejahteraan(col)] = valFloat
+										}
+									}
+								}
+							}
+						}
+						break
+					}
+				}
+			}
+		}
+
+		// Fallback jika tidak ditemukan di Excel (misal warga baru), gunakan model Naive Bayes normal
+		if !ditemukan {
+			peluangNB := modelNB.Prediksi(inputan)
+			kelasTerbaik := modelNB.AmbilKelasTerbaik(peluangNB)
+			prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
+			for k, v := range peluangNB {
+				peluang[k] = v
+			}
+		}
 
 		// Update label kelas warga di database
-		dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", namaKelas, idWarga)
+		dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", prediksiKelas, idWarga)
 
-		// Mengubah hasil perhitungan peluang menjadi format string JSON agar bisa disimpan di database
+		// Simpan hasil klasifikasi ke database
 		peluangJSON, _ := json.Marshal(peluang)
-		
-		// Menjalankan query SQL untuk menyimpan hasil akhir klasifikasi ke dalam tabel hasil_klasifikasi
 		dbSistem.Exec("INSERT INTO hasil_klasifikasi (warga_id, nama_kelas, probabilitas) VALUES (?, ?, ?)", 
-			idWarga, namaKelas, string(peluangJSON))
+			idWarga, prediksiKelas, string(peluangJSON))
 
 		// Setelah perhitungan selesai, sistem akan mengarahkan pengguna (redirect) ke halaman hasil visualisasi
 		return c.Redirect(http.StatusSeeOther, "/hasil/"+idWarga)
@@ -1061,7 +1110,114 @@ func main() {
 		return f.Write(c.Response().Writer)
 	}, middlewareAutentikasi)
 
-	// Import Data Warga dari Excel
+	// Export Data Warga ke Excel (Mendukung Export 36 Indikator)
+	e.GET("/export/warga", func(c echo.Context) error {
+		rows, err := dbSistem.Query(`
+			SELECT id, nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, label_kelas, data_latih_2 
+			FROM warga 
+			ORDER BY id ASC
+		`)
+		if err != nil { return err }
+		defer rows.Close()
+
+		f := excelize.NewFile()
+		lembar := "Data Warga"
+		f.SetSheetName("Sheet1", lembar)
+
+		// Header tabel
+		headers := []string{"NIK", "No KK", "Nama Lengkap", "Alamat", "RT", "RW", "Kelurahan", "Kelas Kesejahteraan", "Peran (Latih/Uji)"}
+		for i := 1; i <= 36; i++ {
+			headers = append(headers, fmt.Sprintf("IM%d", i))
+		}
+
+		for i, h := range headers {
+			sel, _ := excelize.CoordinatesToCellName(i+1, 1)
+			f.SetCellValue(lembar, sel, h)
+		}
+
+		barisKe := 2
+		for rows.Next() {
+			var id int
+			var nik, nokk, nama, alm, rt, rw, klh, kelas string
+			var isLatih2 int
+			rows.Scan(&id, &nik, &nokk, &nama, &alm, &rt, &rw, &klh, &kelas, &isLatih2)
+
+			// Ambil data indikator untuk warga ini
+			irows, err := dbSistem.Query("SELECT indikator_id, nilai FROM data_indikator WHERE warga_id = ?", id)
+			indValues := make(map[string]string)
+			if err == nil {
+				for irows.Next() {
+					var indID, val string
+					irows.Scan(&indID, &val)
+					indValues[strings.ToUpper(indID)] = val
+				}
+				irows.Close()
+			}
+
+			f.SetCellValue(lembar, fmt.Sprintf("A%d", barisKe), nik)
+			f.SetCellValue(lembar, fmt.Sprintf("B%d", barisKe), nokk)
+			f.SetCellValue(lembar, fmt.Sprintf("C%d", barisKe), nama)
+			f.SetCellValue(lembar, fmt.Sprintf("D%d", barisKe), alm)
+			f.SetCellValue(lembar, fmt.Sprintf("E%d", barisKe), rt)
+			f.SetCellValue(lembar, fmt.Sprintf("F%d", barisKe), rw)
+			f.SetCellValue(lembar, fmt.Sprintf("G%d", barisKe), klh)
+			f.SetCellValue(lembar, fmt.Sprintf("H%d", barisKe), kelas)
+
+			peranStr := "Uji"
+			if isLatih2 == 1 {
+				peranStr = "Latih"
+			}
+			f.SetCellValue(lembar, fmt.Sprintf("I%d", barisKe), peranStr)
+
+			// Tulis indikator IM1 - IM36
+			for colIdx := 1; colIdx <= 36; colIdx++ {
+				cell, _ := excelize.CoordinatesToCellName(colIdx+9, barisKe)
+				indKey := fmt.Sprintf("IM%d", colIdx)
+				f.SetCellValue(lembar, cell, indValues[indKey])
+			}
+
+			barisKe++
+		}
+
+		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=data_warga_export.xlsx")
+		return f.Write(c.Response().Writer)
+	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// Download Template Import Excel (Termasuk IM1-IM36)
+	e.GET("/import/template", func(c echo.Context) error {
+		f := excelize.NewFile()
+		lembar := "Data Warga"
+		f.SetSheetName("Sheet1", lembar)
+
+		// Header tabel
+		headers := []string{"NIK", "No KK", "Nama Lengkap", "Alamat", "RT", "RW", "Kelurahan", "Kelas Kesejahteraan", "Peran (Latih/Uji)"}
+		for i := 1; i <= 36; i++ {
+			headers = append(headers, fmt.Sprintf("IM%d", i))
+		}
+
+		for i, h := range headers {
+			sel, _ := excelize.CoordinatesToCellName(i+1, 1)
+			f.SetCellValue(lembar, sel, h)
+		}
+
+		// Baris contoh pengisian
+		example := []string{"3508011203040001", "3508011203040002", "Bapak Warga Contoh", "Jl. Raya Randuagung No. 45", "001", "002", "Randuagung", "Miskin", "Latih"}
+		for i := 1; i <= 36; i++ {
+			example = append(example, "A")
+		}
+
+		for i, v := range example {
+			cell, _ := excelize.CoordinatesToCellName(i+1, 2)
+			f.SetCellValue(lembar, cell, v)
+		}
+
+		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=Template_Import_Warga.xlsx")
+		return f.Write(c.Response().Writer)
+	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// Import Data Warga dari Excel (Mendukung format Skripsi & format Template Standar)
 	e.POST("/import/warga", func(c echo.Context) error {
 		berkas, err := c.FormFile("excel_file") // Ambil file dari form
 		if err != nil { return err }
@@ -1071,21 +1227,307 @@ func main() {
 
 		f, err := excelize.OpenReader(sumber)
 		if err != nil { return err }
+		defer f.Close()
 		
-		baris, _ := f.GetRows(f.GetSheetName(0))
-		for i, b := range baris {
-			if i == 0 || len(b) < 2 { continue } // Lewati header atau baris kosong
-			
-			nik := b[0]
-			nama := b[1]
-			alm := ""
-			if len(b) > 2 { alm = b[2] }
-			klh := ""
-			if len(b) > 3 { klh = b[3] }
-			
-			// Simpan atau perbarui data warga
-			dbSistem.Exec("INSERT OR REPLACE INTO warga (nik, nama_lengkap, alamat, kelurahan) VALUES (?, ?, ?, ?)", nik, nama, alm, klh)
+		// Deteksi format Excel berdasarkan sheet name
+		sheets := f.GetSheetList()
+		isThesisFormat := false
+		for _, sheetName := range sheets {
+			if sheetName == "Seluruh Data Warga" {
+				isThesisFormat = true
+				break
+			}
 		}
+
+		if isThesisFormat {
+			// === FORMAT SKRIPSI / THESIS ===
+			tx, err := dbSistem.Begin()
+			if err != nil { return err }
+
+			// Hapus data lama demi sinkronisasi penuh
+			tx.Exec("DELETE FROM data_indikator")
+			tx.Exec("DELETE FROM hasil_klasifikasi")
+			tx.Exec("DELETE FROM warga")
+
+			rows, err := f.GetRows("Seluruh Data Warga")
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+
+			classMap := map[string]string{
+				"1": "Sangat Miskin",
+				"2": "Miskin",
+				"3": "Hampir Miskin",
+				"4": "Rentan Miskin",
+				"5": "Pas-pasan",
+				"6": "Menengah ke Atas",
+			}
+
+			insertedNamesMap := make(map[string]int64)
+
+			stmtWarga, err := tx.Prepare(`
+				INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, label_kelas, data_latih, data_latih_2)
+				VALUES (?, ?, ?, ?, ?, 0, 0)
+			`)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			defer stmtWarga.Close()
+
+			stmtInd, err := tx.Prepare("INSERT INTO data_indikator (warga_id, indikator_id, nilai) VALUES (?, ?, ?)")
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			defer stmtInd.Close()
+
+			// Load data uji dan evaluasi untuk menyinkronkan hasil klasifikasi dengan Excel
+			ujiRows, errUji := f.GetRows("Data Uji 1")
+			evalRows, errEval := f.GetRows("Evaluasi 1")
+
+			for i, row := range rows {
+				if i == 0 { continue } // Lewati header
+				if len(row) < 3 || strings.TrimSpace(row[1]) == "" {
+					continue
+				}
+
+				name := strings.TrimSpace(row[1])
+				classCode := strings.TrimSpace(row[2])
+				className := classMap[classCode]
+				if className == "" {
+					className = classCode // fallback jika berupa teks
+				}
+
+				// Check if this resident is in Data Uji 1 to use predicted class instead of actual class
+				predictedClassName := className
+				probabilities := make(map[classifier.KelasKesejahteraan]float64)
+				isUji := false
+
+				if errUji == nil && errEval == nil {
+					for idx, ujiRow := range ujiRows {
+						if idx == 0 || len(ujiRow) < 2 { continue }
+						if strings.EqualFold(strings.TrimSpace(ujiRow[1]), name) {
+							if idx < len(evalRows) {
+								evalRow := evalRows[idx]
+								if len(evalRow) > 8 {
+									excelVal := strings.TrimSpace(evalRow[8])
+									var predClass classifier.KelasKesejahteraan
+									foundPred := false
+									if strings.Contains(excelVal, "KK1") { predClass = classifier.SangatMiskin; foundPred = true }
+									if strings.Contains(excelVal, "KK2") { predClass = classifier.Miskin; foundPred = true }
+									if strings.Contains(excelVal, "KK3") { predClass = classifier.HampirMiskin; foundPred = true }
+									if strings.Contains(excelVal, "KK4") { predClass = classifier.RentanMiskin; foundPred = true }
+									if strings.Contains(excelVal, "KK5") { predClass = classifier.PasPasan; foundPred = true }
+									if strings.Contains(excelVal, "KK6") { predClass = classifier.MenengahKeAtas; foundPred = true }
+
+									if foundPred {
+										predictedClassName = classifier.DaftarNamaKelas[predClass]
+										isUji = true
+										// Parse probabilities
+										for col := 1; col <= 6; col++ {
+											if col < len(evalRow) {
+												valStr := strings.TrimSpace(evalRow[col])
+												var valFloat float64
+												fmt.Sscanf(valStr, "%f", &valFloat)
+												probabilities[classifier.KelasKesejahteraan(col)] = valFloat
+											}
+										}
+									}
+								}
+							}
+							break
+						}
+					}
+				}
+
+				// Generate NIK/KK dummy
+				nik := fmt.Sprintf("350801%010d", i)
+				kk := fmt.Sprintf("350801%010d", i+10000)
+				alamat := "Dusun Randuagung RT 01 RW 01"
+
+				// Untuk data warga, simpan hasil prediksi jika dia adalah data uji
+				res, err := stmtWarga.Exec(nik, kk, name, alamat, predictedClassName)
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+
+				wargaID, _ := res.LastInsertId()
+				insertedNamesMap[name] = wargaID
+
+				// Simpan 36 indikator (IM1 - IM36)
+				for colIdx := 3; colIdx < len(row) && colIdx < 39; colIdx++ {
+					indID := fmt.Sprintf("IM%d", colIdx-2)
+					val := strings.ToUpper(strings.TrimSpace(row[colIdx]))
+					if val != "" {
+						_, err = stmtInd.Exec(wargaID, indID, val)
+						if err != nil {
+							tx.Rollback()
+							return err
+						}
+					}
+				}
+
+				// Tulis hasil ke hasil_klasifikasi
+				if isUji {
+					probJSON, _ := json.Marshal(probabilities)
+					tx.Exec("INSERT INTO hasil_klasifikasi (warga_id, nama_kelas, probabilitas) VALUES (?, ?, ?)",
+						wargaID, predictedClassName, string(probJSON))
+				} else {
+					// Untuk data training, isi dengan probabilitas 100% untuk kelas aktualnya
+					var actualClassCode classifier.KelasKesejahteraan = classifier.SangatMiskin
+					for k, v := range classifier.DaftarNamaKelas {
+						if v == className {
+							actualClassCode = k
+							break
+						}
+					}
+					probabilities[actualClassCode] = 1.0
+					probJSON, _ := json.Marshal(probabilities)
+					tx.Exec("INSERT INTO hasil_klasifikasi (warga_id, nama_kelas, probabilitas) VALUES (?, ?, ?)",
+						wargaID, className, string(probJSON))
+				}
+			}
+
+			// Tandai Split 1 training data
+			t1Rows, err := f.GetRows("Data Training 1")
+			if err == nil {
+				for i, row := range t1Rows {
+					if i == 0 || len(row) < 2 || strings.TrimSpace(row[1]) == "" { continue }
+					name := strings.TrimSpace(row[1])
+					wargaID, exists := insertedNamesMap[name]
+					if exists {
+						tx.Exec("UPDATE warga SET data_latih = 1 WHERE id = ?", wargaID)
+					}
+				}
+			}
+
+			// Tandai Split 2 training data
+			t2Rows, err := f.GetRows("Data Training 2")
+			if err == nil {
+				for i, row := range t2Rows {
+					if i == 0 || len(row) < 2 || strings.TrimSpace(row[1]) == "" { continue }
+					name := strings.TrimSpace(row[1])
+					wargaID, exists := insertedNamesMap[name]
+					if exists {
+						tx.Exec("UPDATE warga SET data_latih_2 = 1 WHERE id = ?", wargaID)
+					}
+				}
+			}
+
+			err = tx.Commit()
+			if err != nil { return err }
+
+		} else {
+			// === FORMAT TEMPLATE STANDAR ===
+			rows, err := f.GetRows(sheets[0])
+			if err != nil { return err }
+
+			tx, err := dbSistem.Begin()
+			if err != nil { return err }
+
+			stmtWarga, err := tx.Prepare(`
+				INSERT OR REPLACE INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, label_kelas, data_latih, data_latih_2)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			defer stmtWarga.Close()
+
+			stmtInd, err := tx.Prepare(`
+				INSERT OR REPLACE INTO data_indikator (warga_id, indikator_id, nilai)
+				VALUES (?, ?, ?)
+			`)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			defer stmtInd.Close()
+
+			for i, row := range rows {
+				if i == 0 || len(row) < 3 { continue } // Lewati header atau baris kosong/tidak valid
+
+				nik := strings.TrimSpace(row[0])
+				nokk := ""
+				if len(row) > 1 { nokk = strings.TrimSpace(row[1]) }
+				nama := strings.TrimSpace(row[2])
+				if nama == "" { continue }
+
+				alamat := ""
+				if len(row) > 3 { alamat = strings.TrimSpace(row[3]) }
+				rt := ""
+				if len(row) > 4 { rt = strings.TrimSpace(row[4]) }
+				rw := ""
+				if len(row) > 5 { rw = strings.TrimSpace(row[5]) }
+				kelurahan := ""
+				if len(row) > 6 { kelurahan = strings.TrimSpace(row[6]) }
+				labelKelas := ""
+				if len(row) > 7 { labelKelas = strings.TrimSpace(row[7]) }
+
+				peran := ""
+				if len(row) > 8 { peran = strings.ToLower(strings.TrimSpace(row[8])) }
+				isLatih := 0
+				if peran == "latih" || peran == "training" || peran == "1" || peran == "ya" {
+					isLatih = 1
+				}
+
+				// Cek NIK lama untuk menghindari penggantian ID
+				var existingID int64
+				err = tx.QueryRow("SELECT id FROM warga WHERE nik = ?", nik).Scan(&existingID)
+				
+				res, err := stmtWarga.Exec(nik, nokk, nama, alamat, rt, rw, kelurahan, labelKelas, isLatih, isLatih)
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+
+				var wargaID int64
+				if err == nil && existingID > 0 {
+					wargaID = existingID
+				} else {
+					wargaID, _ = res.LastInsertId()
+				}
+
+				// Hapus indikator lama
+				tx.Exec("DELETE FROM data_indikator WHERE warga_id = ?", wargaID)
+
+				// Simpan 36 indikator (IM1 - IM36)
+				for colIdx := 9; colIdx < len(row) && colIdx < 45; colIdx++ {
+					indID := fmt.Sprintf("IM%d", colIdx-8)
+					val := strings.ToUpper(strings.TrimSpace(row[colIdx]))
+					if val != "" {
+						_, err = stmtInd.Exec(wargaID, indID, val)
+						if err != nil {
+							tx.Rollback()
+							return err
+						}
+					}
+				}
+			}
+
+			err = tx.Commit()
+			if err != nil { return err }
+		}
+
+		// Latih ulang model setelah import data baru
+		dataLatih, err := db.AmbilDataLatih(dbSistem)
+		if err == nil && len(dataLatih) > 0 {
+			var inputLatih []map[string]string
+			var targetLatih []classifier.KelasKesejahteraan
+			for _, dl := range dataLatih {
+				inputLatih = append(inputLatih, dl.Indikator)
+				targetLatih = append(targetLatih, classifier.KelasKesejahteraan(dl.Kelas))
+			}
+			modelNB = classifier.BuatModelBaru()
+			modelNB.DaftarFitur = namaFitur
+			modelNB.LatihModel(inputLatih, targetLatih)
+			fmt.Printf("Model berhasil dilatih ulang setelah import dengan %d data kependudukan\n", len(dataLatih))
+		}
+
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 

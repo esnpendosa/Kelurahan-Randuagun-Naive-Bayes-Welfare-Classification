@@ -26,6 +26,7 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
         <form action="/import/warga" method="POST" enctype="multipart/form-data" style="display: flex; gap: 4px; align-items: center; border: 1px dashed var(--border); padding: 4px 8px; border-radius: var(--radius); margin: 0;">
             <input type="file" name="excel_file" accept=".xlsx" style="font-size: 0.75rem; width: 180px;" required>
             <button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Import</button>
+            <a href="/import/template" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; text-decoration: none;" title="Unduh Template Excel">Template</a>
         </form>
         <form action="/warga/hapus-semua" method="POST" style="margin: 0;" onsubmit="return confirm('Hapus SELURUH data warga? Tindakan ini tidak dapat dibatalkan.')">
             <button type="submit" class="btn btn-danger">Reset Data</button>
