@@ -530,6 +530,30 @@ func main() {
 		return c.Redirect(http.StatusSeeOther, "/hasil/"+idWarga)
 	}, middlewareAutentikasi)
 
+	// Endpoint POST untuk menyimpan data indikator saja tanpa klasifikasi
+	e.POST("/klasifikasi/simpan", func(c echo.Context) error {
+		idWarga := c.FormValue("resident_id")
+		if idWarga == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Warga belum dipilih"})
+		}
+		
+		inputan := make(map[string]string)
+		for _, i := range daftarIndikator {
+			inputan[i.ID] = c.FormValue(i.ID) 
+		}
+
+		// Simpan/update data indikator ke database
+		dbSistem.Exec("DELETE FROM data_indikator WHERE warga_id = ?", idWarga)
+		for _, i := range daftarIndikator {
+			val := inputan[i.ID]
+			if val != "" {
+				dbSistem.Exec("INSERT INTO data_indikator (warga_id, indikator_id, nilai) VALUES (?, ?, ?)", idWarga, i.ID, val)
+			}
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"message": "Data indikator berhasil disimpan"})
+	}, middlewareAutentikasi)
+
 	// Visualisasi Hasil Klasifikasi & Probabilitas 6 Kelas
 	e.GET("/hasil/:id", func(c echo.Context) error {
 		id := c.Param("id")
