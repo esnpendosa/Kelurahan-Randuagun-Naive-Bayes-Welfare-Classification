@@ -500,12 +500,7 @@ func main() {
 											sumVal += valFloat
 										}
 									}
-									// Normalisasi agar total probabilitas bernilai 1.0 (100%)
-									if sumVal > 0 {
-										for col := 1; col <= 6; col++ {
-											peluang[classifier.KelasKesejahteraan(col)] /= sumVal
-										}
-									}
+
 									// Pastikan persentase kelas terbaik/prediksi adalah yang terbesar agar visualisasi bar chart konsisten
 									maxVal := -1.0
 									var maxClassCode classifier.KelasKesejahteraan = 1
@@ -1478,12 +1473,7 @@ func main() {
 												sumVal += valFloat
 											}
 										}
-										// Normalisasi agar total probabilitas bernilai 1.0 (100%)
-										if sumVal > 0 {
-											for col := 1; col <= 6; col++ {
-												probabilities[classifier.KelasKesejahteraan(col)] /= sumVal
-											}
-										}
+
 										// Pastikan persentase kelas terbaik/prediksi adalah yang terbesar agar visualisasi bar chart konsisten
 										maxVal := -1.0
 										var maxClassCode classifier.KelasKesejahteraan = 1

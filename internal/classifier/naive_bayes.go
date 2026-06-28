@@ -98,7 +98,6 @@ func (nb *KlasifikasiNaiveBayes) LatihModel(data []map[string]string, target []K
 // Prediksi menghitung probabilitas setiap kelas untuk data input baru
 func (nb *KlasifikasiNaiveBayes) Prediksi(input map[string]string) map[KelasKesejahteraan]float64 {
 	hasilPeluang := make(map[KelasKesejahteraan]float64) // Map untuk menyimpan hasil akhir probabilitas
-	var totalJumlah float64 // Variabel untuk normalisasi
 
 	for _, c := range nb.SemuaKelas {
 		// Menggunakan logaritma untuk menghindari "underflow" (angka yang terlalu kecil hingga menjadi nol)
@@ -123,19 +122,6 @@ func (nb *KlasifikasiNaiveBayes) Prediksi(input map[string]string) map[KelasKese
 		}
 		// Kembalikan nilai log ke bentuk eksponensial (probabilitas asli)
 		hasilPeluang[c] = math.Exp(p)
-		totalJumlah += hasilPeluang[c] // Tambahkan ke total untuk normalisasi (softmax)
-	}
-
-	// Tahap Normalisasi: Pastikan total probabilitas semua kelas berjumlah 1 (100%)
-	if totalJumlah > 0 {
-		for c := range hasilPeluang {
-			hasilPeluang[c] /= totalJumlah
-		}
-	} else {
-		// Jika semua peluang adalah 0 (data tidak cocok sama sekali), bagi rata peluangnya
-		for _, c := range nb.SemuaKelas {
-			hasilPeluang[c] = 1.0 / float64(len(nb.SemuaKelas))
-		}
 	}
 
 	return hasilPeluang // Kembalikan map probabilitas untuk setiap kelas
