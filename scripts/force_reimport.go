@@ -144,27 +144,15 @@ func main() {
 							if foundPred {
 								predictedClassName = classifier.DaftarNamaKelas[predClass]
 								isUji = true
-								// Parse probabilities (without normalization)
-								for col := 1; col <= 6; col++ {
-									if col < len(evalRow) {
-										valStr := strings.TrimSpace(evalRow[col])
+								// Parse probabilities from KK1 s.d KK6 columns (Column C s.d H, index 2 s.d 7)
+								for classCode := 1; classCode <= 6; classCode++ {
+									excelColIdx := classCode + 1
+									if excelColIdx < len(evalRow) {
+										valStr := strings.TrimSpace(evalRow[excelColIdx])
 										valStr = strings.ReplaceAll(valStr, ",", ".")
 										valFloat, _ := strconv.ParseFloat(valStr, 64)
-										probabilities[classifier.KelasKesejahteraan(col)] = valFloat
+										probabilities[classifier.KelasKesejahteraan(classCode)] = valFloat
 									}
-								}
-								// Pastikan persentase kelas terbaik/prediksi adalah yang terbesar agar visualisasi bar chart konsisten
-								maxVal := -1.0
-								var maxClassCode classifier.KelasKesejahteraan = 1
-								for col := 1; col <= 6; col++ {
-									cCode := classifier.KelasKesejahteraan(col)
-									if probabilities[cCode] > maxVal {
-										maxVal = probabilities[cCode]
-										maxClassCode = cCode
-									}
-								}
-								if maxClassCode != predClass {
-									probabilities[predClass], probabilities[maxClassCode] = probabilities[maxClassCode], probabilities[predClass]
 								}
 							}
 						}
