@@ -332,14 +332,10 @@ func main() {
 		rows, err := dbSistem.Query(`
 			SELECT 
 				w.id, w.nik, w.no_kk, w.nama_lengkap, w.alamat, w.kelurahan, w.data_latih, w.label_kelas,
-				h.nama_kelas
+				(CASE WHEN h.warga_id IS NOT NULL THEN 1 ELSE 0 END) AS sudah_klasifikasi
 			FROM warga w
 			LEFT JOIN (
-				SELECT h1.warga_id, h1.nama_kelas 
-				FROM hasil_klasifikasi h1
-				INNER JOIN (
-					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
-				) h2 ON h1.id = h2.max_id
+				SELECT DISTINCT warga_id FROM hasil_klasifikasi
 			) h ON w.id = h.warga_id
 			ORDER BY w.data_latih DESC, w.id ASC
 		`)
@@ -350,20 +346,18 @@ func main() {
 
 		var daftarWarga []map[string]interface{}
 		for rows.Next() {
-			var id, isLatih int
+			var id, isLatih, sudahKlasifikasi int
 			var nik, nokk, nama, alamat, kelurahan string
-			var labelKelas, hasilPrediksi sql.NullString
-			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas, &hasilPrediksi); err != nil {
+			var labelKelas sql.NullString
+			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas, &sudahKlasifikasi); err != nil {
 				continue
 			}
 			kelasStr := "-"
-			if hasilPrediksi.Valid && hasilPrediksi.String != "" {
-				kelasStr = hasilPrediksi.String
-			} else if labelKelas.Valid && labelKelas.String != "" {
+			if labelKelas.Valid && labelKelas.String != "" {
 				kelasStr = labelKelas.String
 			}
 			daftarWarga = append(daftarWarga, map[string]interface{}{
-				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1, "Kelas": kelasStr,
+				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1, "Kelas": kelasStr, "SudahKlasifikasi": sudahKlasifikasi == 1,
 			})
 		}
 
@@ -476,12 +470,20 @@ func main() {
 								if ditemukan {
 									prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 									// Ambil peluang/probabilitas dari kolom 1 s.d. 6 di Evaluasi 1
+									var sumVal float64
 									for col := 1; col <= 6; col++ {
 										if col < len(evalRow) {
 											valStr := strings.TrimSpace(evalRow[col])
 											valStr = strings.ReplaceAll(valStr, ",", ".")
 											valFloat, _ := strconv.ParseFloat(valStr, 64)
 											peluang[classifier.KelasKesejahteraan(col)] = valFloat
+											sumVal += valFloat
+										}
+									}
+									// Normalisasi agar total probabilitas bernilai 1.0 (100%)
+									if sumVal > 0 {
+										for col := 1; col <= 6; col++ {
+											peluang[classifier.KelasKesejahteraan(col)] /= sumVal
 										}
 									}
 								}
@@ -531,6 +533,22 @@ func main() {
 		}
 		if petaPeluang == nil {
 			petaPeluang = make(map[classifier.KelasKesejahteraan]float64)
+		}
+
+		// Normalisasi petaPeluang agar jumlah totalnya 1.0 (100%)
+		var sumVal float64
+		for _, v := range petaPeluang {
+			sumVal += v
+		}
+		if sumVal > 0 {
+			for k := range petaPeluang {
+				petaPeluang[k] /= sumVal
+			}
+		} else {
+			// Jika semua 0, bagi rata
+			for _, k := range modelNB.SemuaKelas {
+				petaPeluang[k] = 1.0 / float64(len(modelNB.SemuaKelas))
+			}
 		}
 
 		var daftarPeluang []map[string]interface{}
@@ -906,25 +924,41 @@ func main() {
 	e.GET("/laporan", func(c echo.Context) error {
 		filterKelas := c.QueryParam("kategori")
 
-		// Query semua warga yang sudah memiliki label kelas (sudah terklasifikasi)
-		query := "SELECT nik, nama_lengkap, alamat, label_kelas FROM warga WHERE label_kelas != '' AND label_kelas IS NOT NULL"
+		// Query warga yang sudah memiliki hasil klasifikasi (sudah diklasifikasi)
+		query := `
+			SELECT 
+				w.nik, w.nama_lengkap, w.alamat, h.nama_kelas, h.dibuat_pada 
+			FROM warga w
+			INNER JOIN (
+				SELECT h1.warga_id, h1.nama_kelas, h1.dibuat_pada
+				FROM hasil_klasifikasi h1
+				INNER JOIN (
+					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
+				) h2 ON h1.id = h2.max_id
+			) h ON w.id = h.warga_id
+		`
 		args := []interface{}{}
 		if filterKelas != "" {
-			query += " AND label_kelas = ?"
+			query += " WHERE h.nama_kelas = ?"
 			args = append(args, filterKelas)
 		}
-		query += " ORDER BY label_kelas ASC, nama_lengkap ASC"
+		query += " ORDER BY h.nama_kelas ASC, w.nama_lengkap ASC"
 
 		rows, err := dbSistem.Query(query, args...)
 		if err != nil {
-			rows, _ = dbSistem.Query("SELECT nik, nama_lengkap, alamat, label_kelas FROM warga WHERE label_kelas != '' AND label_kelas IS NOT NULL ORDER BY label_kelas ASC")
+			return err
 		}
 		defer rows.Close()
 		
 		var rekap []map[string]interface{}
 		for rows.Next() {
-			var nik, nama, alamat, kelas string
-			rows.Scan(&nik, &nama, &alamat, &kelas)
+			var nik, nama, alamat, kelas, tgl string
+			rows.Scan(&nik, &nama, &alamat, &kelas, &tgl)
+			
+			// Ambil format tanggal saja
+			if len(tgl) > 10 {
+				tgl = tgl[:10]
+			}
 			
 			rekap = append(rekap, map[string]interface{}{
 				"NIK":       nik,
@@ -932,7 +966,7 @@ func main() {
 				"Alamat":    alamat,
 				"ClassName": kelas,
 				"Status":    kelas,
-				"Date":      "-",
+				"Date":      tgl,
 			})
 		}
 
@@ -1089,17 +1123,26 @@ func main() {
 	e.GET("/export/laporan", func(c echo.Context) error {
 		// Mengambil riwayat klasifikasi terbaru
 		rows, err := dbSistem.Query(`
-			SELECT r.nik, r.nama_lengkap, r.alamat, h.nama_kelas, h.dibuat_pada 
-			FROM hasil_klasifikasi h
-			JOIN warga r ON h.warga_id = r.id
-			ORDER BY h.dibuat_pada DESC
+			SELECT 
+				w.nik, w.nama_lengkap, w.alamat, h.nama_kelas, h.dibuat_pada 
+			FROM warga w
+			INNER JOIN (
+				SELECT h1.warga_id, h1.nama_kelas, h1.dibuat_pada
+				FROM hasil_klasifikasi h1
+				INNER JOIN (
+					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
+				) h2 ON h1.id = h2.max_id
+			) h ON w.id = h.warga_id
+			ORDER BY h.nama_kelas ASC, w.nama_lengkap ASC
 		`)
 		if err != nil { return err }
 		defer rows.Close()
 
 		f := excelize.NewFile() // Membuat file Excel baru
 		lembar := "Laporan"
-		f.SetSheetName("Sheet1", lembar)
+		idx, _ := f.NewSheet(lembar)
+		f.SetActiveSheet(idx)
+		f.DeleteSheet("Sheet1")
 		
 		// Membuat Header Tabel di Excel
 		header := []string{"NIK", "Nama Lengkap", "Alamat", "Hasil Klasifikasi", "Tanggal"}
@@ -1121,17 +1164,13 @@ func main() {
 			barisKe++
 		}
 
-		// Set active sheet
-		f.SetActiveSheet(0)
-
 		var buf bytes.Buffer
 		if err := f.Write(&buf); err != nil {
 			return err
 		}
 
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		c.Response().Header().Set("Content-Disposition", "attachment; filename=laporan_kesejahteraan.xlsx")
-		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=\"laporan_kesejahteraan.xlsx\"")
 		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi)
 
@@ -1147,7 +1186,9 @@ func main() {
 
 		f := excelize.NewFile()
 		lembar := "Data Warga"
-		f.SetSheetName("Sheet1", lembar)
+		idx, _ := f.NewSheet(lembar)
+		f.SetActiveSheet(idx)
+		f.DeleteSheet("Sheet1")
 
 		// Header tabel
 		headers := []string{"NIK", "No KK", "Nama Lengkap", "Alamat", "RT", "RW", "Kelurahan", "Kelas Kesejahteraan", "Peran (Latih/Uji)"}
@@ -1204,17 +1245,13 @@ func main() {
 			barisKe++
 		}
 
-		// Set active sheet
-		f.SetActiveSheet(0)
-
 		var buf bytes.Buffer
 		if err := f.Write(&buf); err != nil {
 			return err
 		}
 
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		c.Response().Header().Set("Content-Disposition", "attachment; filename=data_warga_export.xlsx")
-		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=\"data_warga_export.xlsx\"")
 		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -1222,7 +1259,9 @@ func main() {
 	e.GET("/import/template", func(c echo.Context) error {
 		f := excelize.NewFile()
 		lembar := "Data Warga"
-		f.SetSheetName("Sheet1", lembar)
+		idx, _ := f.NewSheet(lembar)
+		f.SetActiveSheet(idx)
+		f.DeleteSheet("Sheet1")
 
 		// Header tabel
 		headers := []string{"NIK", "No KK", "Nama Lengkap", "Alamat", "RT", "RW", "Kelurahan", "Kelas Kesejahteraan", "Peran (Latih/Uji)"}
@@ -1246,17 +1285,13 @@ func main() {
 			f.SetCellValue(lembar, cell, v)
 		}
 
-		// Set active sheet
-		f.SetActiveSheet(0)
-
 		var buf bytes.Buffer
 		if err := f.Write(&buf); err != nil {
 			return err
 		}
 
 		c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		c.Response().Header().Set("Content-Disposition", "attachment; filename=Template_Import_Warga.xlsx")
-		c.Response().Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+		c.Response().Header().Set("Content-Disposition", "attachment; filename=\"Template_Import_Warga.xlsx\"")
 		return c.Blob(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -1369,12 +1404,20 @@ func main() {
 										predictedClassName = classifier.DaftarNamaKelas[predClass]
 										isUji = true
 										// Parse probabilities
+										var sumVal float64
 										for col := 1; col <= 6; col++ {
 											if col < len(evalRow) {
 												valStr := strings.TrimSpace(evalRow[col])
 												valStr = strings.ReplaceAll(valStr, ",", ".")
 												valFloat, _ := strconv.ParseFloat(valStr, 64)
 												probabilities[classifier.KelasKesejahteraan(col)] = valFloat
+												sumVal += valFloat
+											}
+										}
+										// Normalisasi agar total probabilitas bernilai 1.0 (100%)
+										if sumVal > 0 {
+											for col := 1; col <= 6; col++ {
+												probabilities[classifier.KelasKesejahteraan(col)] /= sumVal
 											}
 										}
 									}

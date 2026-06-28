@@ -10,8 +10,8 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
 {{define "content"}}
 <div class="card" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-        <input type="text" id="search-warga" placeholder="Cari NIK atau Nama..." style="width: 250px;" onkeyup="filterWargaTable()">
-        <select id="filter-kelas-warga" style="width: 210px; padding: 7px 10px;" onchange="filterWargaTable()">
+        <input type="text" id="search-warga" placeholder="Cari NIK atau Nama..." style="width: 200px;" onkeyup="filterWargaTable()">
+        <select id="filter-kelas-warga" style="width: 200px; padding: 7px 10px;" onchange="filterWargaTable()">
             <option value="ALL">Semua Kelas Kesejahteraan</option>
             <option value="Sangat Miskin">Sangat Miskin</option>
             <option value="Miskin">Miskin</option>
@@ -20,6 +20,11 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
             <option value="Pas-pasan">Pas-pasan</option>
             <option value="Menengah ke Atas">Menengah ke Atas</option>
             <option value="-">Belum Klasifikasi (-)</option>
+        </select>
+        <select id="filter-status-warga" style="width: 185px; padding: 7px 10px;" onchange="filterWargaTable()">
+            <option value="ALL">Semua Status Klasifikasi</option>
+            <option value="SUDAH">Sudah Klasifikasi</option>
+            <option value="BELUM">Belum Klasifikasi</option>
         </select>
     </div>
     <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
@@ -40,17 +45,18 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
     <table>
         <thead>
             <tr>
-                <th width="160">NIK</th>
+                <th width="150">NIK</th>
                 <th>Nama Lengkap</th>
                 <th>Alamat</th>
                 <th>Kelurahan</th>
-                <th width="180" style="text-align: center;">Kesejahteraan</th>
+                <th width="160" style="text-align: center;">Kesejahteraan (Aktual)</th>
+                <th width="140" style="text-align: center;">Status Klasifikasi</th>
                 <th class="text-right" width="220">Aksi</th>
             </tr>
         </thead>
         <tbody id="table-warga-body">
             {{range .Warga}}
-            <tr data-name="{{.NamaKK}}" data-nik="{{.NIK}}" data-kelas="{{.Kelas}}">
+            <tr data-name="{{.NamaKK}}" data-nik="{{.NIK}}" data-kelas="{{.Kelas}}" data-status="{{if .SudahKlasifikasi}}SUDAH{{else}}BELUM{{end}}">
                 <td style="font-family: monospace; font-size: 0.8rem;">{{.NIK}}</td>
                 <td>
                     <span style="font-weight: 600;">{{.NamaKK}}</span>
@@ -59,6 +65,13 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
                 <td>{{.Kelurahan}}</td>
                 <td style="text-align: center;">
                     <span class="badge badge-{{badgeClass .Kelas}}">{{.Kelas}}</span>
+                </td>
+                <td style="text-align: center;">
+                    {{if .SudahKlasifikasi}}
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;">Sudah</span>
+                    {{else}}
+                    <span class="badge" style="background:#f1f5f9; color:#64748b; border-color:#e2e8f0;">Belum</span>
+                    {{end}}
                 </td>
                 <td class="text-right">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
@@ -70,7 +83,7 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
             </tr>
             {{else}}
             <tr>
-                <td colspan="6" style="text-align: center; padding: 48px; color: var(--text-muted);">Belum ada data warga. Silakan tambah atau import data.</td>
+                <td colspan="7" style="text-align: center; padding: 48px; color: var(--text-muted);">Belum ada data warga. Silakan tambah atau import data.</td>
             </tr>
             {{end}}
         </tbody>
@@ -81,20 +94,23 @@ serta tabel daftar warga lengkap dengan tombol aksi Edit, Hapus, dan Klasifikasi
     function filterWargaTable() {
         const searchVal = document.getElementById('search-warga').value.toLowerCase();
         const filterVal = document.getElementById('filter-kelas-warga').value;
+        const statusVal = document.getElementById('filter-status-warga').value;
         const rows = document.querySelectorAll('#table-warga-body tr');
         
         rows.forEach(row => {
             // Skip baris kosong jika tidak ada data sama sekali
-            if (row.cells.length < 6) return;
+            if (row.cells.length < 7) return;
             
             const name = row.getAttribute('data-name').toLowerCase();
             const nik = row.getAttribute('data-nik').toLowerCase();
             const kelas = row.getAttribute('data-kelas');
+            const status = row.getAttribute('data-status');
             
             const matchesSearch = name.includes(searchVal) || nik.includes(searchVal);
             const matchesFilter = (filterVal === 'ALL') || (kelas === filterVal);
+            const matchesStatus = (statusVal === 'ALL') || (status === statusVal);
             
-            if (matchesSearch && matchesFilter) {
+            if (matchesSearch && matchesFilter && matchesStatus) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
