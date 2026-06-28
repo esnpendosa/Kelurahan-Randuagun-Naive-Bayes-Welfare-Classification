@@ -281,27 +281,47 @@ func main() {
 		var jumlahWarga int
 		dbSistem.QueryRow("SELECT COUNT(*) FROM warga").Scan(&jumlahWarga)
 		var jumlahKlasifikasi int
-		dbSistem.QueryRow("SELECT COUNT(*) FROM hasil_klasifikasi").Scan(&jumlahKlasifikasi)
+		dbSistem.QueryRow(`
+			SELECT COUNT(*) FROM (
+				SELECT warga_id FROM hasil_klasifikasi GROUP BY warga_id
+			)
+		`).Scan(&jumlahKlasifikasi)
 		var jumlahLatih int
 		dbSistem.QueryRow("SELECT COUNT(*) FROM warga WHERE data_latih = 1").Scan(&jumlahLatih)
 
-		// Distribusi per kelas dari seluruh data (latih + uji yang punya label)
-		rows, _ := dbSistem.Query(`
-			SELECT label_kelas, COUNT(*) as jml
-			FROM warga
-			WHERE label_kelas != ''
-			GROUP BY label_kelas
-			ORDER BY jml DESC
+		// Distribusi per kelas dari hasil prediksi terbaru di hasil_klasifikasi
+		rows, err := dbSistem.Query(`
+			SELECT h.nama_kelas, COUNT(*) as jml
+			FROM warga w
+			INNER JOIN (
+				SELECT h1.warga_id, h1.nama_kelas
+				FROM hasil_klasifikasi h1
+				INNER JOIN (
+					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
+				) h2 ON h1.id = h2.max_id
+			) h ON w.id = h.warga_id
+			GROUP BY h.nama_kelas
 		`)
-		defer rows.Close()
+		
+		hitungPerKelas := make(map[string]int)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var label string; var jml int
+				rows.Scan(&label, &jml)
+				hitungPerKelas[label] = jml
+			}
+		}
+
+		urutan := []string{"Sangat Miskin", "Miskin", "Hampir Miskin", "Rentan Miskin", "Pas-pasan", "Menengah ke Atas"}
 		distribusi := []map[string]interface{}{}
 		totalLabel := 0
-		for rows.Next() {
-			var label string; var jml int
-			rows.Scan(&label, &jml)
-			distribusi = append(distribusi, map[string]interface{}{"Label": label, "Count": jml})
+		for _, k := range urutan {
+			jml := hitungPerKelas[k]
+			distribusi = append(distribusi, map[string]interface{}{"Label": k, "Count": jml})
 			totalLabel += jml
 		}
+
 		for i := range distribusi {
 			pct := 0.0
 			if totalLabel > 0 { pct = float64(distribusi[i]["Count"].(int)) / float64(totalLabel) * 100 }
