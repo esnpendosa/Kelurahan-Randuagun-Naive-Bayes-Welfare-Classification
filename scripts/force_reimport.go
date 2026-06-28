@@ -112,8 +112,8 @@ func main() {
 				if strings.EqualFold(strings.TrimSpace(ujiRow[1]), name) {
 					if idx < len(evalRows) {
 						evalRow := evalRows[idx]
-						if len(evalRow) > 8 {
-							excelVal := strings.TrimSpace(evalRow[8])
+						if len(evalRow) > 9 {
+							excelVal := strings.TrimSpace(evalRow[9])
 							var predClass classifier.KelasKesejahteraan
 							foundPred := false
 							if strings.Contains(excelVal, "KK1") {

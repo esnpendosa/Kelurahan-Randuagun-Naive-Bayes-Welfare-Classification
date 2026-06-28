@@ -1,8 +1,6 @@
 package classifier // Paket classifier untuk menangani logika klasifikasi
 
-import (
-	"math" // Mengimpor paket math untuk operasi matematika seperti logaritma
-)
+
 
 // KelasKesejahteraan merepresentasikan 6 tingkat kesejahteraan warga
 type KelasKesejahteraan int
@@ -46,7 +44,7 @@ func BuatModelBaru() *KlasifikasiNaiveBayes {
 	}
 }
 
-// LatihModel menghitung prior dan likelihood dengan teknik Laplace Smoothing
+// LatihModel menghitung prior dan likelihood tanpa Laplace Smoothing
 func (nb *KlasifikasiNaiveBayes) LatihModel(data []map[string]string, target []KelasKesejahteraan) {
 	jumlahTotal := float64(len(target)) // Menghitung total jumlah data training
 	hitungPerKelas := make(map[KelasKesejahteraan]int) // Map untuk menghitung jumlah data per kelas
@@ -66,12 +64,11 @@ func (nb *KlasifikasiNaiveBayes) LatihModel(data []map[string]string, target []K
 
 	// Menghitung Peluang Likelihood P(X|C) untuk setiap fitur
 	for _, fitur := range nb.DaftarFitur {
-		// Mencari nilai unik untuk fitur ini (biasanya A, B, C, D) untuk keperluan Laplace Smoothing
+		// Mencari nilai unik untuk fitur ini (biasanya A, B, C, D)
 		nilaiUnik := make(map[string]bool)
 		for _, baris := range data {
 			nilaiUnik[baris[fitur]] = true
 		}
-		jumlahV := float64(len(nilaiUnik)) // |V|: Jumlah kategori nilai dalam fitur
 
 		// Hitung likelihood untuk setiap kelas
 		for _, c := range nb.SemuaKelas {
@@ -87,9 +84,13 @@ func (nb *KlasifikasiNaiveBayes) LatihModel(data []map[string]string, target []K
 				}
 			}
 
-			// Menerapkan Laplace Smoothing: P(Xi=v|Ck) = (jumlah+1) / (total_di_kelas + |V|)
+			// Tanpa Laplace Smoothing: P(Xi=v|Ck) = jumlahMuncul / totalDiKelas
 			for v := range nilaiUnik {
-				nb.PeluangLikelihood[c][fitur][v] = (float64(jumlahMuncul[v]) + 1) / (float64(totalDiKelas) + jumlahV)
+				if totalDiKelas > 0 {
+					nb.PeluangLikelihood[c][fitur][v] = float64(jumlahMuncul[v]) / float64(totalDiKelas)
+				} else {
+					nb.PeluangLikelihood[c][fitur][v] = 0.0
+				}
 			}
 		}
 	}
@@ -100,28 +101,27 @@ func (nb *KlasifikasiNaiveBayes) Prediksi(input map[string]string) map[KelasKese
 	hasilPeluang := make(map[KelasKesejahteraan]float64) // Map untuk menyimpan hasil akhir probabilitas
 
 	for _, c := range nb.SemuaKelas {
-		// Menggunakan logaritma untuk menghindari "underflow" (angka yang terlalu kecil hingga menjadi nol)
-		p := math.Log(nb.PeluangPrior[c]) // Mulai dengan log P(C)
-		if nb.PeluangPrior[c] == 0 {
-			p = -1e10 // Gunakan angka sangat kecil jika prior 0
+		p := nb.PeluangPrior[c]
+		if p == 0 {
+			hasilPeluang[c] = 0
+			continue
 		}
 
 		for _, fitur := range nb.DaftarFitur {
 			nilai := input[fitur] // Ambil nilai fitur dari input
 			
 			// Pastikan map likelihood untuk kelas dan fitur ini sudah terinisialisasi
+			var l float64
 			if nb.PeluangLikelihood[c] != nil && nb.PeluangLikelihood[c][fitur] != nil {
-				if l, ada := nb.PeluangLikelihood[c][fitur][nilai]; ada && l > 0 {
-					p += math.Log(l)
-				} else {
-					p += math.Log(1e-6) // Penanganan nilai yang tidak ada di data training
-				}
-			} else {
-				p += math.Log(1e-6)
+				l = nb.PeluangLikelihood[c][fitur][nilai] // nilainya default 0.0 jika tidak ada
+			}
+			
+			p *= l
+			if p == 0 {
+				break
 			}
 		}
-		// Kembalikan nilai log ke bentuk eksponensial (probabilitas asli)
-		hasilPeluang[c] = math.Exp(p)
+		hasilPeluang[c] = p
 	}
 
 	return hasilPeluang // Kembalikan map probabilitas untuk setiap kelas
@@ -129,8 +129,8 @@ func (nb *KlasifikasiNaiveBayes) Prediksi(input map[string]string) map[KelasKese
 
 // AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
-	var kelasTerbaik KelasKesejahteraan // Variabel penampung kelas dengan skor tertinggi
-	var peluangMaks float64 // Variabel penampung nilai probabilitas tertinggi
+	var kelasTerbaik KelasKesejahteraan = 1 // default
+	var peluangMaks float64 = -1.0          // Mulai dari -1.0 agar kelas dengan peluang 0 bisa terpilih jika semuanya 0
 	for c, p := range peluang {
 		if p > peluangMaks {
 			peluangMaks = p

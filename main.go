@@ -477,8 +477,8 @@ func main() {
 						// Ditemukan di Data Uji 1. Ambil baris prediksi yang sesuai di Evaluasi 1
 						if idx < len(evalRows) {
 							evalRow := evalRows[idx]
-							if len(evalRow) > 8 {
-								excelVal := strings.TrimSpace(evalRow[8])
+							if len(evalRow) > 9 {
+								excelVal := strings.TrimSpace(evalRow[9])
 								var kelasTerbaik classifier.KelasKesejahteraan
 								if strings.Contains(excelVal, "KK1") { kelasTerbaik = classifier.SangatMiskin; ditemukan = true }
 								if strings.Contains(excelVal, "KK2") { kelasTerbaik = classifier.Miskin; ditemukan = true }
@@ -757,23 +757,22 @@ func main() {
 			excelFile.Close()
 		}
 
-		for idx, du := range dataUji {
+		for _, du := range dataUji {
 			aktual := classifier.KelasKesejahteraan(du.Kelas)
 			
 			// Ambil prediksi dari Excel agar metrik sinkron sempurna dengan skripsi
 			pred := classifier.KelasKesejahteraan(1)
 			pFound := false
-			rowNum := idx + 2
-			if rowNum <= len(excelRows) {
-				r := excelRows[rowNum-1]
-				if len(r) > 8 {
-					excelVal := strings.TrimSpace(r[8])
+			for _, r := range excelRows {
+				if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(du.Nama)) {
+					excelVal := strings.TrimSpace(r[9])
 					if strings.Contains(excelVal, "KK1") { pred = classifier.SangatMiskin; pFound = true }
 					if strings.Contains(excelVal, "KK2") { pred = classifier.Miskin; pFound = true }
 					if strings.Contains(excelVal, "KK3") { pred = classifier.HampirMiskin; pFound = true }
 					if strings.Contains(excelVal, "KK4") { pred = classifier.RentanMiskin; pFound = true }
 					if strings.Contains(excelVal, "KK5") { pred = classifier.PasPasan; pFound = true }
 					if strings.Contains(excelVal, "KK6") { pred = classifier.MenengahKeAtas; pFound = true }
+					break
 				}
 			}
 			
@@ -1435,8 +1434,8 @@ func main() {
 						if strings.EqualFold(strings.TrimSpace(ujiRow[1]), name) {
 							if idx < len(evalRows) {
 								evalRow := evalRows[idx]
-								if len(evalRow) > 8 {
-									excelVal := strings.TrimSpace(evalRow[8])
+								if len(evalRow) > 9 {
+									excelVal := strings.TrimSpace(evalRow[9])
 									var predClass classifier.KelasKesejahteraan
 									foundPred := false
 									if strings.Contains(excelVal, "KK1") { predClass = classifier.SangatMiskin; foundPred = true }
