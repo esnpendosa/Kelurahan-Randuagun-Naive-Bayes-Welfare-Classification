@@ -147,10 +147,10 @@ Karena probabilitas berupa pecahan desimal kecil antara $0$ dan $1$, perkalian 3
 Untuk itu, kita konversikan perkalian probabilitas menjadi **penjumlahan logaritma**:
 $$\ln P(C_k | X) = \ln P(C_k) + \sum_{i=1}^{36} \ln P(X_i | C_k)$$
 
-#### 4. Normalisasi Peluang Akhir (Softmax)
-Setelah menjumlahkan nilai logaritma untuk masing-masing ke-6 kelas, nilai tersebut dikonversi kembali ke bentuk desimal normal melalui operasi eksponensial dan dibagi dengan jumlah total peluang seluruh kelas agar total akhir probabilitas bernilai $1.0$ ($100\%$):
-$$P(C_k | X) = \frac{e^{\ln P(C_k | X)}}{\sum_{j=1}^{6} e^{\ln P(C_j | X)}}$$
-Kelas dengan probabilitas tertinggi ($P(C_k | X)$ maksimal) dipilih sebagai kelas prediksi terbaik.
+#### 4. Nilai Peluang Akhir Tanpa Normalisasi (Sesuai Excel)
+Setelah menjumlahkan nilai logaritma untuk masing-masing ke-6 kelas, nilai tersebut dikonversi kembali ke bentuk desimal normal melalui operasi eksponensial (raw exponential) tanpa dibagi total peluang. Hal ini bertujuan untuk menghasilkan nilai probabilitas mentah (dalam bentuk desimal/notasi ilmiah desimal) agar persis sama dengan isi lembar perhitungan manual di Microsoft Excel:
+$$P(C_k | X) = e^{\ln P(C_k | X)}$$
+Kelas dengan nilai probabilitas tertinggi ($P(C_k | X)$ maksimal) dipilih sebagai kelas prediksi terbaik.
 
 ---
 

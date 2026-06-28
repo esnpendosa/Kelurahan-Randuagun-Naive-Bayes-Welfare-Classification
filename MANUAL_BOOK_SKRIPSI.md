@@ -117,7 +117,7 @@ Langkah ini digunakan untuk mensimulasikan penggunaan aplikasi pada kasus warga 
     *   *Catatan*: Jika warga tersebut sudah pernah diinput kuesionernya, maka 36 radio button indikator di bawah akan langsung **terisi otomatis** sesuai data historisnya. Anda hanya perlu mengubah indikator yang mengalami pemutakhiran.
 3.  Jika warga belum memiliki data historis, isi pilihan jawaban untuk 36 indikator (IM1 - IM36) dari Bagian 1 (Kondisi Rumah), Bagian 2 (Ekonomi Keluarga), hingga Bagian 3 (Aset & Fasilitas).
 4.  Klik tombol **Mulai Proses Klasifikasi**.
-5.  Sistem akan mengalihkan halaman ke **Hasil Analisis**. Catat hasil prediksi kelas dan grafik probabilitas batang untuk masing-masing ke-6 kelas.
+5.  Sistem akan mengalihkan halaman ke **Hasil Analisis**. Catat hasil prediksi kelas dan daftar nilai probabilitas (eksponensial/desimal mentah) untuk masing-masing ke-6 kelas.
 
 ---
 
@@ -127,9 +127,9 @@ Untuk bab pembahasan skripsi, mahasiswa biasanya diwajibkan menyertakan perhitun
 
 1.  Ambil salah satu warga dari data uji yang telah diklasifikasikan.
 2.  Catat seluruh pilihan jawaban indikatornya (IM1 s.d. IM36).
-3.  Lakukan perhitungan manual Naive Bayes menggunakan rumus log-probability dan normalisasi softmax (ikuti panduan rumus lengkap di **MANUAL_BOOK.md Bagian 7**).
+3.  Lakukan perhitungan manual Naive Bayes menggunakan rumus log-probability dan kembalikan ke nilai eksponensial mentah (tanpa normalisasi desimal) sesuai format Excel.
 4.  Buka halaman **Hasil Analisis** warga tersebut di aplikasi.
-5.  Bandingkan nilai persentase probabilitas hasil hitung manual Anda dengan persentase diagram batang yang disajikan sistem.
+5.  Bandingkan nilai probabilitas hasil hitung manual Anda dengan nilai probabilitas desimal/notasi ilmiah desimal (seperti `4,0019E-09`) yang disajikan sistem.
 6.  *Hasil Pembahasan Skripsi*: Tunjukkan bahwa perhitungan manual bernilai identik ($100\%$ sama) dengan output program, membuktikan implementasi kode rumus Naive Bayes pada sistem telah valid.
 
 ---

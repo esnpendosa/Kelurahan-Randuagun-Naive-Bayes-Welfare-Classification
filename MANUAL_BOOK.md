@@ -251,6 +251,10 @@ $$\text{Total Eksponensial} = E_1 + E_2 = 0.02344 + 0.03907 = 0.06251$$
 #### **Kesimpulan**:
 Sistem akan memprediksi warga baru tersebut masuk ke dalam kelas **Menengah** dengan probabilitas sebesar **$62.5\%$** karena nilai $P(Menengah | X) > P(Miskin | X)$.
 
+> [!NOTE]
+> **Catatan Implementasi Sistem Utama:**
+> Pada implementasi aplikasi utama, tahap normalisasi desimal (Langkah 3) sengaja dinonaktifkan (sistem langsung mengambil nilai eksponensial mentah dari Langkah 2) untuk menyelaraskan dengan format keluaran lembar sebar Microsoft Excel yang digunakan dalam sidang pengujian skripsi Anda.
+
 ---
 
 ## 📂 Bagian 8: Pemeliharaan Database & Backup Data
