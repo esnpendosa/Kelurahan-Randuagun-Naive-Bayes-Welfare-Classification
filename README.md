@@ -11,9 +11,9 @@ Aplikasi ini berjalan secara mandiri (self-contained desktop-shell) memanfaatkan
 Untuk mempermudah navigasi dan pembukaan dokumen langsung dari halaman repositori:
 *   📖 **[Buku Panduan Operasional Pengguna (MANUAL_BOOK.md)](MANUAL_BOOK.md)** - Panduan lengkap instalasi, penggunaan fitur, pemeliharaan database, dan FAQ.
 *   🎓 **[Buku Panduan Langkah-Langkah Pengujian Skripsi (MANUAL_BOOK_SKRIPSI.md)](MANUAL_BOOK_SKRIPSI.md)** - Panduan metodologi pengujian, split dataset, validasi hitung manual, dan lampiran sidang.
-*   📊 **[Dataset Skripsi Excel Asli (klasifikasi naive bayes tambahan data.xlsx)](klasifikasi%20naive%20bayes%20tambahan%20data.xlsx)** - Lembar data latih & uji kemiskinan warga Kelurahan Randuagung.
+*   📊 **[Dataset Skripsi Excel Asli (data training+uji naive bayes.xlsx)](data%20training+uji%20naive%20bayes.xlsx)** - Lembar data latih & uji kemiskinan warga Kelurahan Randuagung.
 *   🗄️ **[File Database SQLite Utama (data_skripsi.db)](data_skripsi.db)** - Database penyimpanan lokal berisi tabel profil, indikator, dan hasil klasifikasi warga.
-*   🚀 **[Biner Program Aplikasi Desktop (Klasifikasi-Warga-Randuagung.exe)](Klasifikasi-Warga-Randuagung.exe)** - Program siap pakai portable tanpa instalasi compiler Go.
+*   🚀 **[Biner Program Aplikasi Desktop (main.exe)](main.exe)** - Program siap pakai portable tanpa instalasi compiler Go.
 
 ---
 

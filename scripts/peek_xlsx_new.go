@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	f, err := excelize.OpenFile("klasifikasi naive bayes tambahan data.xlsx")
+	f, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,7 +23,9 @@ func main() {
 			return names
 		}
 		for i, r := range rows {
-			if i == 0 { continue }
+			if i == 0 {
+				continue
+			}
 			if len(r) > 1 && strings.TrimSpace(r[1]) != "" {
 				name := strings.TrimSpace(r[1])
 				names[name] = r[2:39] // class + 36 indicators
@@ -47,20 +49,36 @@ func main() {
 	// Check if all names in T1 + U1 are in all
 	inAll1 := 0
 	for k := range t1 {
-		if _, ok := all[k]; ok { inAll1++ } else { fmt.Printf("T1 name not in All: %q\n", k) }
+		if _, ok := all[k]; ok {
+			inAll1++
+		} else {
+			fmt.Printf("T1 name not in All: %q\n", k)
+		}
 	}
 	for k := range u1 {
-		if _, ok := all[k]; ok { inAll1++ } else { fmt.Printf("U1 name not in All: %q\n", k) }
+		if _, ok := all[k]; ok {
+			inAll1++
+		} else {
+			fmt.Printf("U1 name not in All: %q\n", k)
+		}
 	}
 	fmt.Printf("T1 + U1 names in All: %d / 114\n", inAll1)
 
 	// Check if all names in T2 + U2 are in all
 	inAll2 := 0
 	for k := range t2 {
-		if _, ok := all[k]; ok { inAll2++ } else { fmt.Printf("T2 name not in All: %q\n", k) }
+		if _, ok := all[k]; ok {
+			inAll2++
+		} else {
+			fmt.Printf("T2 name not in All: %q\n", k)
+		}
 	}
 	for k := range u2 {
-		if _, ok := all[k]; ok { inAll2++ } else { fmt.Printf("U2 name not in All: %q\n", k) }
+		if _, ok := all[k]; ok {
+			inAll2++
+		} else {
+			fmt.Printf("U2 name not in All: %q\n", k)
+		}
 	}
 	fmt.Printf("T2 + U2 names in All: %d / 114\n", inAll2)
 }

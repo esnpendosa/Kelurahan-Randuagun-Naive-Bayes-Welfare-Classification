@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+
 	"github.com/xuri/excelize/v2"
 )
 
 func main() {
-	f, err := excelize.OpenFile("klasifikasi naive bayes tambahan data.xlsx")
+	f, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}

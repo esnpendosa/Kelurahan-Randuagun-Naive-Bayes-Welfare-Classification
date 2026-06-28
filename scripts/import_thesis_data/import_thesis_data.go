@@ -30,7 +30,7 @@ func main() {
 	tx.Exec("DELETE FROM hasil_klasifikasi")
 	tx.Exec("DELETE FROM warga")
 
-	f, err := excelize.OpenFile("klasifikasi naive bayes tambahan data.xlsx")
+	f, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
 	if err != nil {
 		tx.Rollback()
 		log.Fatal(err)

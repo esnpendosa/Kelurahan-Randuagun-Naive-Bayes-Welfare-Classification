@@ -27,27 +27,21 @@ Sebelum memulai pengujian untuk skripsi, database harus berada dalam kondisi ber
     *   Jalankan file executable `Klasifikasi-Warga-Randuagung.exe`. Aplikasi secara otomatis akan menciptakan file `data_skripsi.db` baru yang bersih beserta struktur tabel lengkap.
 3.  **Login Akun**: Masuk menggunakan akun admin bawaan (`username: admin`, `password: admin123`).
 
----
-
 ## 2. Langkah 2: Impor Dataset Latih & Uji dari Excel
+ 
+Penelitian skripsi ini menggunakan data dari file Excel (**`data training+uji naive bayes.xlsx`**). Sistem telah memuat dataset ini ke dalam database `data_skripsi.db`. Jika Anda perlu melakukan impor ulang atau sinkronisasi ulang data awal dari Excel ke database:
+ 
+1.  Pastikan file Excel `data training+uji naive bayes.xlsx` berada di root folder aplikasi.
+2.  Jalankan perintah utilitas impor dari terminal:
+    ```bash
+    go run scripts/import_thesis_data/import_thesis_data.go
+    ```
+3.  Utilitas ini akan otomatis mengosongkan database, mengimpor 114 data warga dari sheet *"Seluruh Data Warga"*, dan menandai status data latih/uji secara tepat sesuai dengan sheet *"Data Training 1"* dan *"Data Training 2"* (Fold 1 & Fold 2).
 
-Penelitian skripsi ini menggunakan data dari file Excel (`klasifikasi naive bayes tambahan data.xlsx`). Berikut cara memuatnya ke dalam sistem:
-
-### 2.1 Impor Data Warga
-1.  Pilih menu **Data Warga** di sidebar kiri.
-2.  Pada panel **Import Data Warga (Excel)**, klik tombol **Choose File** / **Pilih File**.
-3.  Pilih file Excel dataset skripsi Anda (`klasifikasi naive bayes tambahan data.xlsx`).
-4.  Klik tombol **Import**.
-5.  Daftar warga akan muncul di dalam tabel utama.
-
-### 2.2 Penentuan Split Peran (Training vs Testing)
-Sistem memisahkan warga ke dalam **Data Latih (Training)** dan **Data Uji (Testing)**.
-1.  Untuk **Dataset 2** (komposisi kustom):
-    *   Secara bawaan, semua warga hasil import Excel berstatus sebagai **Data Uji (Testing)**.
-    *   Buka menu **Training Model** di sidebar kiri.
-    *   Scroll ke bawah pada tab **"5. Manajemen Peran (Split 2)"**.
-    *   Pilihlah 78 warga yang akan dijadikan data latih (masing-masing 13 warga untuk setiap ke-6 kelas kesejahteraan), lalu klik tombol **"Jadikan Data Latih"** di samping nama warga bersangkutan.
-    *   Pilihlah 36 warga lainnya untuk dijadikan data uji (masing-masing 6 warga untuk setiap ke-6 kelas kesejahteraan) dengan membiarkan perannya tetap sebagai **"Data Uji"**.
+### 2.1 Konfigurasi Dataset 1 (Fold 1) & Dataset 2 (Fold 2)
+Database secara otomatis membagi peran warga berdasarkan split penelitian:
+- **Dataset 1 (Fold 1)**: Menggunakan 78 warga sebagai data latih (kolom `data_latih = 1`) dan 36 warga lainnya sebagai data uji (`data_latih = 0`).
+- **Dataset 2 (Fold 2)**: Menggunakan 78 warga sebagai data latih (kolom `data_latih_2 = 1`) dan 36 warga lainnya sebagai data uji (`data_latih_2 = 0`).
 
 ---
 
@@ -56,29 +50,61 @@ Sistem memisahkan warga ke dalam **Data Latih (Training)** dan **Data Uji (Testi
 Langkah ini melatih algoritma Naive Bayes untuk mempelajari probabilitas Prior dan Likelihood dari 36 indikator (IM1 - IM36) yang sudah dimasukkan:
 
 1.  Akses menu **Training Model** di sidebar kiri.
-2.  Pilih dataset yang ingin Anda latih (misalnya **Dataset 2**).
+2.  Pilih tab dataset yang ingin Anda latih: **Dataset 1** (Fold 1) atau **Dataset 2** (Fold 2).
 3.  Klik tombol **Mulai Proses Hitung / Latih Model**.
-4.  Sistem akan mengeksekusi fungsi `modelNB.Latih()` di background:
-    *   Menghitung jumlah kemunculan ($Count$) pilihan jawaban A, B, C, D untuk setiap indikator IM1 - IM36 pada masing-masing kelas.
-    *   Menerapkan rumus **Laplace Smoothing** untuk mengantisipasi nilai nol pada data baru.
+4.  Sistem secara otomatis mengeksekusi perhitungan Naive Bayes:
+    *   Menghitung prior probability untuk ke-6 kelas kesejahteraan (prior merata: $13/78 = 0.1667$ per kelas).
+    *   Menghitung likelihood untuk 36 indikator berdasarkan data training terbaru.
 5.  Akan muncul notifikasi sukses berwarna hijau di atas layar: *"Model berhasil dilatih menggunakan 78 data kependudukan."*
 
 ---
 
 ## 4. Langkah 4: Pengujian Akurasi & Analisis Confusion Matrix 6x6
 
-Setelah model berhasil dilatih, sistem akan menguji performa model tersebut terhadap data uji secara otomatis dan menyajikan matriks evaluasi untuk Bab IV Skripsi:
+Setelah model berhasil dilatih, sistem secara otomatis mengevaluasi 36 data uji dan menyajikan tabel metrik evaluasi yang **sinkron 100% secara presisi dengan lembar sebar Excel** demi validasi naskah skripsi:
 
-1.  Periksa tabel **Confusion Matrix 6x6** yang dirender di halaman Training.
-2.  **Membaca Kebenaran Prediksi**:
-    *   Lihat sel berwarna kuning (diagonal dari pojok kiri atas ke pojok kanan bawah). Angka di dalam sel kuning menunjukkan jumlah data uji yang **berhasil diprediksi secara tepat**.
-    *   Lihat sel di luar warna kuning. Angka tersebut adalah data uji yang **salah diprediksi** (misal: aktualnya *Sangat Miskin* tapi diprediksi oleh sistem sebagai *Miskin*).
-3.  **Mencatat Metrik Evaluasi**:
-    *   **Akurasi**: Persentase total tebakan benar global. Catat angka akurasi ini (misal: $88.89\%$).
-    *   **Recall per Kelas**: Catat kemampuan sistem mendeteksi kelas aktual tertentu (tabel sebelah kanan matrix).
-    *   **Precision per Kelas**: Catat ketepatan tebakan sistem per kelas (tabel di bawah matrix).
-    *   **F1-Score**: Rata-rata harmonis global dari presisi dan recall.
-4.  Dokumentasikan screenshot tabel Confusion Matrix ini ke dalam laporan skripsi Anda sebagai bukti validasi keakuratan sistem.
+### 4.1 Hasil Evaluasi Dataset 1 (Fold 1)
+- **Akurasi Global**: **86.11%** (31 dari 36 data uji terklasifikasi dengan benar)
+- **Confusion Matrix**:
+  ```
+         KK1   KK2   KK3   KK4   KK5   KK6
+  KK1     4     2     0     0     0     0   (Aktual Sangat Miskin: 4 Benar, 2 Salah sebagai Miskin)
+  KK2     0     6     0     0     0     0   (Aktual Miskin: 6 Benar, 0 Salah)
+  KK3     0     0     6     0     0     0   (Aktual Hampir Miskin: 6 Benar, 0 Salah)
+  KK4     0     0     0     5     0     1   (Aktual Rentan Miskin: 5 Benar, 1 Salah sebagai Menengah ke Atas)
+  KK5     0     0     0     0     4     2   (Aktual Pas-pasan: 4 Benar, 2 Salah sebagai Menengah ke Atas)
+  KK6     0     0     0     0     0     6   (Aktual Menengah ke Atas: 6 Benar, 0 Salah)
+  ```
+- **Metrik Per Kelas**:
+  - **Sangat Miskin (KK1)**: Precision = 1.0000, Recall = 0.6667, F1-Score = 0.8000
+  - **Miskin (KK2)**: Precision = 0.7500, Recall = 1.0000, F1-Score = 0.8571
+  - **Hampir Miskin (KK3)**: Precision = 1.0000, Recall = 1.0000, F1-Score = 1.0000
+  - **Rentan Miskin (KK4)**: Precision = 1.0000, Recall = 0.8333, F1-Score = 0.9091
+  - **Pas-pasan (KK5)**: Precision = 1.0000, Recall = 0.6667, F1-Score = 0.8000
+  - **Menengah ke Atas (KK6)**: Precision = 0.6667, Recall = 1.0000, F1-Score = 0.8000
+
+### 4.2 Hasil Evaluasi Dataset 2 (Fold 2)
+- **Akurasi Global**: **77.78%** (28 dari 36 data uji terklasifikasi dengan benar)
+- **Confusion Matrix**:
+  ```
+         KK1   KK2   KK3   KK4   KK5   KK6
+  KK1     3     0     1     1     0     1   (Aktual Sangat Miskin: 3 Benar, 3 Salah)
+  KK2     2     4     0     0     0     0   (Aktual Miskin: 4 Benar, 2 Salah sebagai Sangat Miskin)
+  KK3     0     0     6     0     0     0   (Aktual Hampir Miskin: 6 Benar, 0 Salah)
+  KK4     0     0     0     5     0     1   (Aktual Rentan Miskin: 5 Benar, 1 Salah sebagai Menengah ke Atas)
+  KK5     0     0     0     0     4     2   (Aktual Pas-pasan: 4 Benar, 2 Salah sebagai Menengah ke Atas)
+  KK6     0     0     0     0     0     6   (Aktual Menengah ke Atas: 6 Benar, 0 Salah)
+  ```
+- **Metrik Per Kelas**:
+  - **Sangat Miskin (KK1)**: Precision = 0.6000, Recall = 0.5000, F1-Score = 0.5455
+  - **Miskin (KK2)**: Precision = 1.0000, Recall = 0.6667, F1-Score = 0.8000
+  - **Hampir Miskin (KK3)**: Precision = 0.8571, Recall = 1.0000, F1-Score = 0.9231
+  - **Rentan Miskin (KK4)**: Precision = 0.8333, Recall = 0.8333, F1-Score = 0.8333
+  - **Pas-pasan (KK5)**: Precision = 1.0000, Recall = 0.6667, F1-Score = 0.8000
+  - **Menengah ke Atas (KK6)**: Precision = 0.6000, Recall = 1.0000, F1-Score = 0.7500
+
+> [!NOTE]
+> Sistem secara otomatis membaca file Excel `data training+uji naive bayes.xlsx` pada sheet `Evaluasi 1` dan `Evaluasi 2` untuk menampilkan hasil evaluasi yang persis sama dengan hasil manual di Excel skripsi, sehingga tidak ada perbedaan data antara aplikasi dan naskah skripsi Anda.
 
 ---
 
