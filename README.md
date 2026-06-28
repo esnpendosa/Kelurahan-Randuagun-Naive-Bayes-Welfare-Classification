@@ -129,6 +129,11 @@ Sistem ini mengimplementasikan algoritma Naive Bayes Classifier untuk memprediks
 Peluang awal kemunculan dari setiap kelas kesejahteraan $C_k$:
 $$P(C_k) = \frac{\text{Jumlah Warga Latih Kelas } C_k}{\text{Total Seluruh Warga Latih}}$$
 
+> [!NOTE]
+> **Karakteristik Dataset Penelitian (Balanced Dataset):**
+> Pada dataset skripsi Kelurahan Randuagung ini, total data warga adalah **114 warga**, di mana masing-masing dari 6 kelas kesejahteraan memiliki tepat **19 warga (16.7%)**.
+> Hal ini menghasilkan distribusi yang seimbang sempurna (*balanced dataset*), sehingga peluang prior untuk setiap kelas bernilai sama rata yaitu $P(C_k) = 19/114 \approx 0.1667$ (atau $16.7\%$). Distribusi seimbang ini sangat ideal untuk menghindari bias pada model klasifikasi.
+
 #### 2. Likelihood Probability dengan Laplace Smoothing
 Menghitung peluang bersyarat kemunculan suatu nilai indikator $X_i$ (misal: IM1 = 'A') di kelas $C_k$. Kita menerapkan **Laplace Smoothing** untuk menghindari probabilitas nol jika suatu nilai atribut tidak ada di data training kelas tertentu:
 $$P(X_i = v | C_k) = \frac{Count(X_i = v \text{ di kelas } C_k) + 1}{Count(C_k) + |V|}$$
