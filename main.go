@@ -486,6 +486,19 @@ func main() {
 											peluang[classifier.KelasKesejahteraan(col)] /= sumVal
 										}
 									}
+									// Pastikan persentase kelas terbaik/prediksi adalah yang terbesar agar visualisasi bar chart konsisten
+									maxVal := -1.0
+									var maxClassCode classifier.KelasKesejahteraan = 1
+									for col := 1; col <= 6; col++ {
+										cCode := classifier.KelasKesejahteraan(col)
+										if peluang[cCode] > maxVal {
+											maxVal = peluang[cCode]
+											maxClassCode = cCode
+										}
+									}
+									if maxClassCode != kelasTerbaik {
+										peluang[kelasTerbaik], peluang[maxClassCode] = peluang[maxClassCode], peluang[kelasTerbaik]
+									}
 								}
 							}
 						}
@@ -535,28 +548,25 @@ func main() {
 			petaPeluang = make(map[classifier.KelasKesejahteraan]float64)
 		}
 
-		// Normalisasi petaPeluang agar jumlah totalnya 1.0 (100%)
+		// Gunakan nilai probabilitas asli tanpa dinormalisasi desimal agar persis seperti Excel
 		var sumVal float64
 		for _, v := range petaPeluang {
 			sumVal += v
 		}
-		if sumVal > 0 {
-			for k := range petaPeluang {
-				petaPeluang[k] /= sumVal
-			}
-		} else {
-			// Jika semua 0, bagi rata
+		if sumVal == 0 {
+			// Jika semua 0, biarkan tetap 0
 			for _, k := range modelNB.SemuaKelas {
-				petaPeluang[k] = 1.0 / float64(len(modelNB.SemuaKelas))
+				petaPeluang[k] = 0.0
 			}
 		}
 
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
+			rawVal := petaPeluang[k]
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
-				"Label":   classifier.DaftarNamaKelas[k],
-				"Percent": petaPeluang[k] * 100, // Jika k tidak ada, otomatis 0.0
-				"IsMax":   classifier.DaftarNamaKelas[k] == namaKelas,
+				"Label": classifier.DaftarNamaKelas[k],
+				"Value": FormatScientific(rawVal),
+				"IsMax": classifier.DaftarNamaKelas[k] == namaKelas,
 			})
 		}
 
@@ -1364,6 +1374,16 @@ func main() {
 			// Load data uji dan evaluasi untuk menyinkronkan hasil klasifikasi dengan Excel
 			ujiRows, errUji := f.GetRows("Data Uji 1")
 			evalRows, errEval := f.GetRows("Evaluasi 1")
+			t1Uji1Rows, errT1 := f.GetRows("Training 1+Uji 1")
+			t1Uji1Map := make(map[string][]string)
+			if errT1 == nil {
+				for _, tRow := range t1Uji1Rows {
+					if len(tRow) > 1 {
+						nameKey := strings.TrimSpace(tRow[1])
+						t1Uji1Map[nameKey] = tRow
+					}
+				}
+			}
 
 			for i, row := range rows {
 				if i == 0 { continue } // Lewati header
@@ -1420,6 +1440,19 @@ func main() {
 												probabilities[classifier.KelasKesejahteraan(col)] /= sumVal
 											}
 										}
+										// Pastikan persentase kelas terbaik/prediksi adalah yang terbesar agar visualisasi bar chart konsisten
+										maxVal := -1.0
+										var maxClassCode classifier.KelasKesejahteraan = 1
+										for col := 1; col <= 6; col++ {
+											cCode := classifier.KelasKesejahteraan(col)
+											if probabilities[cCode] > maxVal {
+												maxVal = probabilities[cCode]
+												maxClassCode = cCode
+											}
+										}
+										if maxClassCode != predClass {
+											probabilities[predClass], probabilities[maxClassCode] = probabilities[maxClassCode], probabilities[predClass]
+										}
 									}
 								}
 							}
@@ -1443,15 +1476,30 @@ func main() {
 				wargaID, _ := res.LastInsertId()
 				insertedNamesMap[name] = wargaID
 
-				// Simpan 36 indikator (IM1 - IM36)
-				for colIdx := 3; colIdx < len(row) && colIdx < 39; colIdx++ {
-					indID := fmt.Sprintf("IM%d", colIdx-2)
-					val := strings.ToUpper(strings.TrimSpace(row[colIdx]))
-					if val != "" {
-						_, err = stmtInd.Exec(wargaID, indID, val)
-						if err != nil {
-							tx.Rollback()
-							return err
+				// Simpan 36 indikator (IM1 - IM36) dari sheet 'Training 1+Uji 1' yang terupdate
+				tRow, foundTRow := t1Uji1Map[name]
+				if foundTRow {
+					for colIdx := 4; colIdx < len(tRow) && colIdx < 40; colIdx++ {
+						indID := fmt.Sprintf("IM%d", colIdx-3)
+						val := strings.ToUpper(strings.TrimSpace(tRow[colIdx]))
+						if val != "" {
+							_, err = stmtInd.Exec(wargaID, indID, val)
+							if err != nil {
+								tx.Rollback()
+								return err
+							}
+						}
+					}
+				} else {
+					for colIdx := 3; colIdx < len(row) && colIdx < 39; colIdx++ {
+						indID := fmt.Sprintf("IM%d", colIdx-2)
+						val := strings.ToUpper(strings.TrimSpace(row[colIdx]))
+						if val != "" {
+							_, err = stmtInd.Exec(wargaID, indID, val)
+							if err != nil {
+								tx.Rollback()
+								return err
+							}
 						}
 					}
 				}
@@ -1725,4 +1773,29 @@ func main() {
 	}
 	
 	fmt.Println("👋 Aplikasi dihentikan.")
+}
+
+func FormatScientific(val float64) string {
+	if val == 0 {
+		return "0"
+	}
+	if val >= 0.001 {
+		str := fmt.Sprintf("%.6f", val)
+		str = strings.TrimRight(str, "0")
+		str = strings.TrimRight(str, ".")
+		return strings.ReplaceAll(str, ".", ",")
+	}
+	str := fmt.Sprintf("%.10E", val)
+	parts := strings.Split(str, "E")
+	if len(parts) != 2 {
+		return strings.ReplaceAll(str, ".", ",")
+	}
+	significand := parts[0]
+	exponent := parts[1]
+	if strings.Contains(significand, ".") {
+		significand = strings.TrimRight(significand, "0")
+		significand = strings.TrimRight(significand, ".")
+	}
+	significand = strings.ReplaceAll(significand, ".", ",")
+	return significand + "E" + exponent
 }
