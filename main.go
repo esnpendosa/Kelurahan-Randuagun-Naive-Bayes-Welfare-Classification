@@ -499,12 +499,52 @@ func main() {
 											peluang[classifier.KelasKesejahteraan(classCode)] = valFloat
 										}
 									}
-
-
 								}
 							}
 						}
 						break
+					}
+				}
+			}
+
+			// Jika tidak ditemukan di Data Uji 1, cek Data Uji 2 (khusus pemodelan 2)
+			if !ditemukan {
+				ujiRows2, errUji2 := excelFile.GetRows("Data Uji 2")
+				evalRows2, errEval2 := excelFile.GetRows("Evaluasi 2")
+				if errUji2 == nil && errEval2 == nil {
+					for idx2, row2 := range ujiRows2 {
+						if idx2 == 0 || len(row2) < 2 { continue }
+						if strings.EqualFold(strings.TrimSpace(row2[1]), strings.TrimSpace(namaWarga)) {
+							// Ditemukan di Data Uji 2. Ambil baris prediksi yang sesuai di Evaluasi 2
+							if idx2 < len(evalRows2) {
+								evalRow2 := evalRows2[idx2]
+								if len(evalRow2) > 9 {
+									excelVal2 := strings.TrimSpace(evalRow2[9])
+									var kelasTerbaik classifier.KelasKesejahteraan
+									if strings.Contains(excelVal2, "KK1") { kelasTerbaik = classifier.SangatMiskin; ditemukan = true }
+									if strings.Contains(excelVal2, "KK2") { kelasTerbaik = classifier.Miskin; ditemukan = true }
+									if strings.Contains(excelVal2, "KK3") { kelasTerbaik = classifier.HampirMiskin; ditemukan = true }
+									if strings.Contains(excelVal2, "KK4") { kelasTerbaik = classifier.RentanMiskin; ditemukan = true }
+									if strings.Contains(excelVal2, "KK5") { kelasTerbaik = classifier.PasPasan; ditemukan = true }
+									if strings.Contains(excelVal2, "KK6") { kelasTerbaik = classifier.MenengahKeAtas; ditemukan = true }
+
+									if ditemukan {
+										prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
+										// Ambil peluang/probabilitas dari kolom KK1 s.d KK6 di Evaluasi 2 (Kolom C s.d H, indeks 2 s.d 7)
+										for classCode := 1; classCode <= 6; classCode++ {
+											excelColIdx := classCode + 1
+											if excelColIdx < len(evalRow2) {
+												valStr := strings.TrimSpace(evalRow2[excelColIdx])
+												valStr = strings.ReplaceAll(valStr, ",", ".")
+												valFloat, _ := strconv.ParseFloat(valStr, 64)
+												peluang[classifier.KelasKesejahteraan(classCode)] = valFloat
+											}
+										}
+									}
+								}
+							}
+							break
+						}
 					}
 				}
 			}
