@@ -73,6 +73,8 @@ func main() {
 	// Load data uji dan evaluasi untuk menyinkronkan hasil klasifikasi dengan Excel
 	ujiRows, errUji := f.GetRows("Data Uji 1")
 	evalRows, errEval := f.GetRows("Evaluasi 1")
+	ujiRows2, errUji2 := f.GetRows("Data Uji 2")
+	evalRows2, errEval2 := f.GetRows("Evaluasi 2")
 	t1Uji1Rows, errT1 := f.GetRows("Training 1+Uji 1")
 	t1Uji1Map := make(map[string][]string)
 	if errT1 == nil {
@@ -152,6 +154,47 @@ func main() {
 										valStr = strings.ReplaceAll(valStr, ",", ".")
 										valFloat, _ := strconv.ParseFloat(valStr, 64)
 										probabilities[classifier.KelasKesejahteraan(classCode)] = valFloat
+									}
+								}
+							}
+						}
+					}
+					break
+				}
+			}
+		}
+
+		// Jika tidak ditemukan di Data Uji 1, cek Data Uji 2 (khusus pemodelan 2)
+		if !isUji && errUji2 == nil && errEval2 == nil {
+			for idx2, ujiRow2 := range ujiRows2 {
+				if idx2 == 0 || len(ujiRow2) < 2 {
+					continue
+				}
+				if strings.EqualFold(strings.TrimSpace(ujiRow2[1]), name) {
+					if idx2 < len(evalRows2) {
+						evalRow2 := evalRows2[idx2]
+						if len(evalRow2) > 9 {
+							excelVal2 := strings.TrimSpace(evalRow2[9])
+							var predClass2 classifier.KelasKesejahteraan
+							foundPred2 := false
+							if strings.Contains(excelVal2, "KK1") { predClass2 = classifier.SangatMiskin; foundPred2 = true }
+							if strings.Contains(excelVal2, "KK2") { predClass2 = classifier.Miskin; foundPred2 = true }
+							if strings.Contains(excelVal2, "KK3") { predClass2 = classifier.HampirMiskin; foundPred2 = true }
+							if strings.Contains(excelVal2, "KK4") { predClass2 = classifier.RentanMiskin; foundPred2 = true }
+							if strings.Contains(excelVal2, "KK5") { predClass2 = classifier.PasPasan; foundPred2 = true }
+							if strings.Contains(excelVal2, "KK6") { predClass2 = classifier.MenengahKeAtas; foundPred2 = true }
+
+							if foundPred2 {
+								predictedClassName = classifier.DaftarNamaKelas[predClass2]
+								isUji = true
+								// Ambil probabilitas dari kolom KK1-KK6 di Evaluasi 2 (indeks 2 s.d 7)
+								for cc := 1; cc <= 6; cc++ {
+									excelColIdx2 := cc + 1
+									if excelColIdx2 < len(evalRow2) {
+										valStr2 := strings.TrimSpace(evalRow2[excelColIdx2])
+										valStr2 = strings.ReplaceAll(valStr2, ",", ".")
+										valFloat2, _ := strconv.ParseFloat(valStr2, 64)
+										probabilities[classifier.KelasKesejahteraan(cc)] = valFloat2
 									}
 								}
 							}
