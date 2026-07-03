@@ -268,9 +268,16 @@ func main() {
 	// Fungsi bantuan untuk mengambil data user aktif dari sesi
 	ambilDataPengguna := func(c echo.Context) map[string]string {
 		sess, _ := session.Get("session", c)
+		username, _ := sess.Values["username"].(string)
+		role, _ := sess.Values["role"].(string)
+		avatar := ""
+		if username != "" {
+			dbSistem.QueryRow("SELECT COALESCE(avatar, '') FROM pengguna WHERE nama_pengguna = ?", username).Scan(&avatar)
+		}
 		return map[string]string{
-			"Name": sess.Values["username"].(string),
-			"Role": sess.Values["role"].(string),
+			"Name":   username,
+			"Role":   role,
+			"Avatar": avatar,
 		}
 	}
 
@@ -739,7 +746,6 @@ func main() {
 	// Training Model - Proses Hitung & Evaluasi (POST)
 	e.POST("/training/proses", func(c echo.Context) error {
 		modelDipilih := c.FormValue("model") // training1 atau training2
-		filterKelas := c.FormValue("filter_kelas")
 
 		splitVal := 1
 		if modelDipilih == "training2" {
@@ -748,15 +754,6 @@ func main() {
 
 		dataLatih, _ := db.AmbilDataLatihSplit(dbSistem, splitVal)
 		dataUji, _ := db.AmbilDataUjiSplit(dbSistem, splitVal)
-
-		// Filter kelas jika dipilih
-		if filterKelas != "" {
-			var filtered []db.DataLatih
-			for _, d := range dataLatih {
-				if classifier.DaftarNamaKelas[classifier.KelasKesejahteraan(d.Kelas)] == filterKelas { filtered = append(filtered, d) }
-			}
-			dataLatih = filtered
-		}
 
 		if len(dataLatih) < 2 {
 			return c.Redirect(http.StatusSeeOther, "/training")
@@ -928,7 +925,6 @@ func main() {
 
 		modelLabel := "Data Training 1"
 		if modelDipilih == "training2" { modelLabel = "Data Training 2" }
-		if filterKelas != "" { modelLabel += " (filter: " + filterKelas + ")" }
 
 		errorUji := ""
 		if len(dataUji) == 0 { errorUji = "Data uji tidak ditemukan. Pastikan ada data dengan data_latih=0 dan label_kelas terisi." }
@@ -1183,8 +1179,9 @@ func main() {
 		id := c.FormValue("id")
 		nama := c.FormValue("username")
 		sandi := c.FormValue("password")
-		peran := c.FormValue("role")
-		db.PerbaruiPengguna(dbSistem, id, nama, sandi, peran)
+		peran := "Admin" // Role selalu Admin, tidak perlu dropdown
+		avatar := c.FormValue("avatar")
+		db.PerbaruiPengguna(dbSistem, id, nama, sandi, peran, avatar)
 		return c.Redirect(http.StatusSeeOther, "/users")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 

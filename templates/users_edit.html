@@ -1,32 +1,114 @@
 {{/*
 Halaman Form Edit Pengguna (users_edit.html)
-Formulir khusus Admin untuk memperbarui data nama pengguna, mengganti kata sandi, 
-atau mengubah peran (role) pengguna terpilih.
+Formulir Admin: memperbarui nama pengguna, foto profil, dan kata sandi.
+Role selalu Admin, tidak perlu dropdown.
 */}}
 {{define "title"}}Edit Akun{{end}}
 {{define "header"}}Perbarui Pengaturan Akun{{end}}
 
 {{define "content"}}
+<style>
+    .avatar-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+    .avatar-circle {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: var(--blue-light);
+        border: 3px solid var(--blue-border);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition: border-color 0.2s;
+    }
+    .avatar-circle:hover { border-color: var(--blue); }
+    .avatar-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .avatar-circle img.default-avatar {
+        padding: 16px;
+    }
+    .avatar-circle .avatar-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+        border-radius: 50%;
+    }
+    .avatar-circle:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay svg { width: 22px; height: 22px; color: white; }
+    .avatar-label {
+        font-size: 0.75rem;
+        color: var(--text-3);
+    }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 38px; }
+    .btn-eye-toggle {
+        position: absolute;
+        right: 9px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-4);
+        padding: 4px;
+        display: flex;
+        align-items: center;
+    }
+    .btn-eye-toggle:hover { color: var(--text-2); }
+    .btn-eye-toggle svg { width: 17px; height: 17px; }
+</style>
+
 <div class="card" style="max-width: 600px; margin: 0 auto;">
-    <h3 style="margin-bottom: 24px;">Data Pengguna: {{.EditUser.Username}}</h3>
-    <form action="/users/update" method="POST">
+    <h3 style="margin-bottom: 28px; font-size: 1rem;">Data Pengguna: <span style="color:var(--blue);">{{.EditUser.Username}}</span></h3>
+
+    <form action="/users/update" method="POST" id="form-edit-user">
         <input type="hidden" name="id" value="{{.EditUser.ID}}">
-        
+        <input type="hidden" name="avatar" id="input-avatar-data" value="{{.EditUser.Avatar}}">
+
+        <!-- Foto Profil -->
+        <div class="avatar-wrap">
+            <div class="avatar-circle" id="avatar-btn" title="Klik untuk ganti foto profil">
+                <img id="avatar-preview" src="{{if .EditUser.Avatar}}{{.EditUser.Avatar}}{{else}}data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'/%3E%3C/svg%3E{{end}}" alt="Foto Profil" class="{{if not .EditUser.Avatar}}default-avatar{{end}}">
+                <div class="avatar-overlay">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+            </div>
+            <span class="avatar-label">Klik foto untuk mengubah</span>
+            <input type="file" id="input-avatar-file" accept="image/*" style="display:none;">
+        </div>
+
         <div class="form-group">
             <label>Nama Pengguna</label>
             <input type="text" name="username" value="{{.EditUser.Username}}" required>
         </div>
 
         <div class="form-group">
-            <label>Kata Sandi Baru (Kosongkan jika tidak diubah)</label>
-            <input type="password" name="password" placeholder="Masukkan kata sandi baru jika ingin diubah">
-        </div>
-
-        <div class="form-group">
-            <label>Peran (Role)</label>
-            <select name="role" required>
-                <option value="Admin" selected>Admin</option>
-            </select>
+            <label>Kata Sandi Baru <span style="color:var(--text-4); font-weight:400;">(Kosongkan jika tidak diubah)</span></label>
+            <div class="pw-wrap">
+                <input type="password" id="input-pw" name="password" placeholder="Masukkan kata sandi baru jika ingin diubah">
+                <button type="button" class="btn-eye-toggle" id="btn-eye" aria-label="Tampilkan/sembunyikan kata sandi">
+                    <svg id="eye-svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
@@ -35,4 +117,39 @@ atau mengubah peran (role) pengguna terpilih.
         </div>
     </form>
 </div>
+
+<script>
+    // Toggle eye / password visibility
+    const btnEye = document.getElementById('btn-eye');
+    const inputPw = document.getElementById('input-pw');
+    const eyeSvg = document.getElementById('eye-svg');
+    const pathEyeOff = `<path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>`;
+    const pathEyeOn = `<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+    let pwVisible = false;
+    btnEye.addEventListener('click', () => {
+        pwVisible = !pwVisible;
+        inputPw.type = pwVisible ? 'text' : 'password';
+        eyeSvg.innerHTML = pwVisible ? pathEyeOff : pathEyeOn;
+    });
+
+    // Avatar photo picker
+    const avatarBtn = document.getElementById('avatar-btn');
+    const avatarFile = document.getElementById('input-avatar-file');
+    const avatarPreview = document.getElementById('avatar-preview');
+    const avatarData = document.getElementById('input-avatar-data');
+
+    avatarBtn.addEventListener('click', () => avatarFile.click());
+    avatarFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const dataUrl = ev.target.result;
+            avatarPreview.src = dataUrl;
+            avatarPreview.style.padding = '0';
+            avatarData.value = dataUrl;
+        };
+        reader.readAsDataURL(file);
+    });
+</script>
 {{end}}

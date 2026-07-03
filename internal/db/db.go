@@ -23,7 +23,8 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			nama_pengguna TEXT UNIQUE,
 			kata_sandi TEXT,
-			peran TEXT
+			peran TEXT,
+			avatar TEXT
 		)`,
 		// Tabel warga untuk menyimpan data kependudukan dan label kesejahteraan
 		`CREATE TABLE IF NOT EXISTS warga (
@@ -94,6 +95,28 @@ func InisialisasiDB(path string) (*sql.DB, error) {
 	if !kolomLatih2Ada {
 		// Tambahkan kolom data_latih_2 jika belum ada
 		db.Exec("ALTER TABLE warga ADD COLUMN data_latih_2 INTEGER DEFAULT 0")
+	}
+
+	// Cek apakah kolom avatar sudah ada di tabel pengguna
+	var avatarAda bool
+	pRows, err := db.Query("PRAGMA table_info(pengguna)")
+	if err == nil {
+		defer pRows.Close()
+		for pRows.Next() {
+			var cid int
+			var name, ctype string
+			var notnull, pk int
+			var dflt_value interface{}
+			if err := pRows.Scan(&cid, &name, &ctype, &notnull, &dflt_value, &pk); err == nil {
+				if name == "avatar" {
+					avatarAda = true
+				}
+			}
+		}
+	}
+	if !avatarAda {
+		// Tambahkan kolom avatar jika belum ada
+		db.Exec("ALTER TABLE pengguna ADD COLUMN avatar TEXT DEFAULT ''")
 	}
 
 	return db, nil // Mengembalikan instance database yang siap digunakan
@@ -242,7 +265,7 @@ func TambahWarga(db *sql.DB, nik, no_kk, nama, alamat, rt, rw, kelurahan string)
 
 // AmbilSemuaPengguna mengambil daftar semua akun yang ada di sistem
 func AmbilSemuaPengguna(db *sql.DB) ([]map[string]interface{}, error) {
-	rows, err := db.Query("SELECT id, nama_pengguna, peran FROM pengguna")
+	rows, err := db.Query("SELECT id, nama_pengguna, peran, COALESCE(avatar, '') FROM pengguna")
 	if err != nil {
 		return nil, err
 	}
@@ -251,9 +274,9 @@ func AmbilSemuaPengguna(db *sql.DB) ([]map[string]interface{}, error) {
 	var daftar []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var u, r string
-		rows.Scan(&id, &u, &r)
-		daftar = append(daftar, map[string]interface{}{"ID": id, "Username": u, "Role": r})
+		var u, r, a string
+		rows.Scan(&id, &u, &r, &a)
+		daftar = append(daftar, map[string]interface{}{"ID": id, "Username": u, "Role": r, "Avatar": a})
 	}
 	return daftar, nil
 }
@@ -261,12 +284,12 @@ func AmbilSemuaPengguna(db *sql.DB) ([]map[string]interface{}, error) {
 // AmbilPenggunaBerdasarkanID mencari data pengguna berdasarkan primary key ID
 func AmbilPenggunaBerdasarkanID(db *sql.DB, id interface{}) (map[string]interface{}, error) {
 	var uid int
-	var u, p, r string
-	err := db.QueryRow("SELECT id, nama_pengguna, kata_sandi, peran FROM pengguna WHERE id = ?", id).Scan(&uid, &u, &p, &r)
+	var u, p, r, a string
+	err := db.QueryRow("SELECT id, nama_pengguna, kata_sandi, peran, COALESCE(avatar, '') FROM pengguna WHERE id = ?", id).Scan(&uid, &u, &p, &r, &a)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{"ID": uid, "Username": u, "Password": p, "Role": r}, nil
+	return map[string]interface{}{"ID": uid, "Username": u, "Password": p, "Role": r, "Avatar": a}, nil
 }
 
 // TambahPengguna membuat akun pengguna baru dengan kata sandi yang di-hash
@@ -276,23 +299,23 @@ func TambahPengguna(db *sql.DB, nama_pengguna, kata_sandi, peran string) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO pengguna (nama_pengguna, kata_sandi, peran) VALUES (?, ?, ?)", nama_pengguna, string(hash), peran)
+	_, err = db.Exec("INSERT INTO pengguna (nama_pengguna, kata_sandi, peran, avatar) VALUES (?, ?, ?, '')", nama_pengguna, string(hash), peran)
 	return err
 }
 
 // PerbaruiPengguna mengubah data pengguna (opsional ubah kata sandi)
-func PerbaruiPengguna(db *sql.DB, id interface{}, nama_pengguna, kata_sandi, peran string) error {
+func PerbaruiPengguna(db *sql.DB, id interface{}, nama_pengguna, kata_sandi, peran, avatar string) error {
 	if kata_sandi != "" {
 		// Jika kata sandi baru diisi, enkripsi dan simpan
 		hash, err := bcrypt.GenerateFromPassword([]byte(kata_sandi), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}
-		_, err = db.Exec("UPDATE pengguna SET nama_pengguna = ?, kata_sandi = ?, peran = ? WHERE id = ?", nama_pengguna, string(hash), peran, id)
+		_, err = db.Exec("UPDATE pengguna SET nama_pengguna = ?, kata_sandi = ?, peran = ?, avatar = ? WHERE id = ?", nama_pengguna, string(hash), peran, avatar, id)
 		return err
 	}
-	// Jika kata sandi kosong, hanya perbarui nama dan peran
-	_, err := db.Exec("UPDATE pengguna SET nama_pengguna = ?, peran = ? WHERE id = ?", nama_pengguna, peran, id)
+	// Jika kata sandi kosong, hanya perbarui nama, peran, dan avatar
+	_, err := db.Exec("UPDATE pengguna SET nama_pengguna = ?, peran = ?, avatar = ? WHERE id = ?", nama_pengguna, peran, avatar, id)
 	return err
 }
 

@@ -72,9 +72,18 @@ Base Layout v3.0 — Clean Professional
         <header class="topbar">
             <div class="topbar-title">{{template "header" .}}</div>
             <div class="topbar-actions">
-                <div class="topbar-user">
-                    <p class="user-name">{{.User.Name}}</p>
-                    <p class="user-role">{{.User.Role}}</p>
+                <div style="display: flex; align-items: center; gap: 10px; padding-right: 14px; border-right: 1px solid var(--border);">
+                    {{if .User.Avatar}}
+                    <img src="{{.User.Avatar}}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--blue-border); flex-shrink: 0;">
+                    {{else}}
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--blue-light); border: 1.5px solid var(--blue-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg fill="currentColor" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--blue);"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                    </div>
+                    {{end}}
+                    <div class="topbar-user" style="text-align: left; border-right: none; padding-right: 0;">
+                        <p class="user-name">{{.User.Name}}</p>
+                        <p class="user-role">{{.User.Role}}</p>
+                    </div>
                 </div>
                 <a href="/logout" class="btn btn-secondary btn-sm">Keluar</a>
             </div>
