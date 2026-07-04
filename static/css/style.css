@@ -4,10 +4,10 @@
    ============================================================ */
 
 :root {
-    --blue:         #2563eb;
-    --blue-light:   #eff6ff;
-    --blue-border:  #bfdbfe;
-    --blue-dark:    #1d4ed8;
+    --blue:         #16a34a;
+    --blue-light:   #f0fdf4;
+    --blue-border:  #bbf7d0;
+    --blue-dark:    #15803d;
 
     --bg:           #f5f6f8;
     --surface:      #ffffff;
@@ -237,7 +237,7 @@ tbody tr:hover { background: #fafafa; }
 .badge-5 { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 .badge-6 { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
 .badge-secondary { background: #f3f4f6; color: var(--text-3); border-color: var(--border); }
-.badge-training { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.badge-training { background: var(--blue-light); color: var(--blue); border-color: var(--blue-border); }
 .badge-uji { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
 
 /* ── Forms ─────────────────────────────────── */
@@ -266,7 +266,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--blue);
-    box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+    box-shadow: 0 0 0 2px rgba(22,163,74,0.12);
 }
 
 .form-row {

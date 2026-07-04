@@ -132,6 +132,9 @@ func main() {
 			}
 			return r
 		},
+		"safeURL": func(s string) template.URL {
+			return template.URL(s)
+		},
 	}
 	
 	// Inisialisasi perender template
