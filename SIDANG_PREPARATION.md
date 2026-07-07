@@ -1,190 +1,257 @@
-# 🎓 PANDUAN PERSIAPAN SIDANG SKRIPSI
+# 🎓 PANDUAN LENGKAP PERSIAPAN SIDANG SKRIPSI
 ## Sistem Klasifikasi Kesejahteraan Warga (Naive Bayes) - Kelurahan Randuagung
 
-Dokumen ini disusun khusus sebagai bahan persiapan menghadapi dosen penguji pada sidang skripsi besok. Seluruh penjelasan menggunakan **Bahasa Manusia (konseptual/mudah dipahami)**, bukan sekadar logika pemrograman kering, agar Anda dapat menjelaskan sistem dengan percaya diri.
+Dokumen ini disusun sebagai panduan utama Anda untuk menghadapi dosen penguji pada sidang skripsi. Penjelasan di bawah ini dirancang menggunakan **Bahasa Manusia (konseptual & mudah dipahami)** tanpa menghilangkan esensi akademis dan teknisnya.
 
 ---
 
-## 📂 1. STRUKTUR BERKAS APLIKASI (File Structure)
+## 📂 1. PETA STRUKTUR BERKAS APLIKASI (File Structure)
 
-Berikut adalah peta struktur folder dan berkas proyek Anda beserta kegunaannya dalam bahasa yang mudah dijelaskan ke penguji:
+Penguji sering kali meminta Anda menunjukkan di mana letak kode program tertentu. Gunakan peta ini untuk memandu mereka dengan percaya diri:
 
 ```
 [Kelurahan-Randuagun-Naive-Bayes-Welfare-Classification-master]
- ├── main.go                       <-- Otak/Pengendali utama web server & routing
- ├── data_skripsi.db               <-- Database SQLite (menyimpan semua data & hasil)
- ├── data training+uji naive bayes.xlsx <-- Dataset Excel asli skripsi
- ├── templates/                    <-- Desain antarmuka web (HTML Go Templates)
- │    ├── base.html                <-- Bingkai layout luar (sidebar & navbar)
- │    ├── index.html               <-- Dashboard utama
- │    ├── training.html            <-- Halaman latih & metrik akurasi 6x6
- │    └── klasifikasi.html         <-- Kuesioner penginputan 36 indikator
- ├── internal/                     <-- Modul backend khusus
+ ├── main.go                       <-- Otak Utama (Web Server, Routing, & Controller)
+ ├── data_skripsi.db               <-- Database SQLite (Menyimpan data login, warga, & hasil)
+ ├── data training+uji naive bayes.xlsx <-- Dataset Excel Asli Skripsi (Sumbu Validasi)
+ ├── templates/                    <-- Antarmuka Pengguna / User Interface (HTML)
+ │    ├── base.html                <-- Kerangka Layout (Sidebar navigasi & tema visual)
+ │    ├── index.html               <-- Dashboard (Statistik warga, kelas, & log aktivitas)
+ │    ├── training.html            <-- Simulasi Model (Pengujian akurasi, confusion matrix)
+ │    ├── klasifikasi.html         <-- Kuesioner Input (Formulir pengisian 36 indikator)
+ │    └── ...
+ ├── internal/                     <-- Modul Logika Sistem (Backend)
  │    ├── db/
- │    │    └── db.go               <-- Inisialisasi database SQLite & query CRUD
+ │    │    └── db.go               <-- Koneksi SQLite & Query Database (CRUD)
  │    └── classifier/
- │         ├── naive_bayes.go      <-- Implementasi rumus prior & likelihood
- │         └── indicators.go       <-- Definisi 36 indikator & bobot jawaban
- └── scripts/                      <-- Berkas script pembantu (seperti data import)
+ │         ├── naive_bayes.go      <-- Mesin Perhitungan Naive Bayes (Prior & Likelihood)
+ │         └── indicators.go       <-- Definisi 36 Indikator Kesejahteraan & Pilihan Jawaban
+ └── scripts/                      <-- Script Pendukung (Import data Excel ke SQLite)
 ```
 
-### Penjelasan Fungsi Setiap Bagian:
-1. **`main.go` (Otak / Pengendali Utama Web)**:
-   * **Bahasa Manusia**: Ini adalah pusat kendali aplikasi. Berkas ini berfungsi mengatur rute halaman (routing), menerima data masukan dari pengguna melalui web, memanggil fungsi perhitungan Naive Bayes, menyimpan hasil klasifikasi, serta menjalankan server lokal agar aplikasi bisa dibuka di browser Chrome.
-2. **`internal/classifier/naive_bayes.go` (Rumus Naive Bayes)**:
-   * **Bahasa Manusia**: Di sinilah rumus matematika Naive Bayes ditulis dalam bentuk kode. Berkas ini bertugas menghitung peluang awal kelas (Prior) dan peluang kemunculan indikator (Likelihood), serta menentukan tingkat kesejahteraan akhir (Sangat Miskin s.d. Menengah ke Atas) berdasarkan nilai probabilitas tertinggi.
-3. **`internal/classifier/indicators.go` (Daftar 36 Indikator)**:
-   * **Bahasa Manusia**: Berkas ini menyimpan daftar lengkap 36 indikator kesejahteraan (IM1 sampai IM36) yang dibagi menjadi 3 kategori: *Kondisi Rumah*, *Ekonomi Keluarga*, dan *Aset & Fasilitas*. Setiap indikator memiliki pilihan jawaban (A, B, C, D) beserta bobot maknanya.
-4. **`internal/db/db.go` (Pengelola Database SQLite)**:
-   * **Bahasa Manusia**: Berkas ini khusus bertugas untuk menghubungkan aplikasi dengan database SQLite. Di dalamnya ada perintah untuk membuat tabel baru, menambah warga, memperbarui profil, hingga mengambil daftar data warga untuk dilatih atau diuji.
-5. **`templates/` (Tampilan Antarmuka HTML)**:
-   * **Bahasa Manusia**: Folder ini berisi desain halaman web aplikasi.
-     * `base.html` adalah bingkai/layout luar (sidebar navigasi dan header).
-     * Halaman lainnya seperti `index.html` (dashboard), `training.html` (pengujian model), dan `klasifikasi.html` (pengisian kuesioner) akan dimasukkan ke dalam bingkai tersebut secara dinamis.
-6. **`data_skripsi.db` (Database SQLite)**:
-   * **Bahasa Manusia**: Berkas database tunggal yang menyimpan semua data login pengguna, data identitas warga, jawaban 36 indikator warga, serta riwayat hasil klasifikasi yang telah dilakukan.
-7. **`data training+uji naive bayes.xlsx` (Dataset Excel)**:
-   * **Bahasa Manusia**: Berkas Excel berisi data asli penelitian skripsi Anda (114 warga). Aplikasi membaca file ini secara langsung agar hasil perhitungan evaluasi dan akurasi di aplikasi **100% cocok secara presisi** dengan apa yang Anda tulis di dokumen skripsi.
+### Penjelasan Fungsi Komponen Utama (Gaya Sidang):
+1. **`main.go` (Pusat Kendali)**:
+   * *Fungsi*: Menjalankan web server lokal, mengatur rute URL (Routing), dan menjadi jembatan antara tampilan HTML dengan database serta rumus klasifikasi.
+   * *Penjelasan ke Penguji*: *"Ini adalah file utama yang pertama kali dijalankan. Di sini saya mengatur alur data dari browser pengguna, memprosesnya di backend, lalu mengembalikan hasilnya ke layar."*
+2. **`naive_bayes.go` (Mesin Naive Bayes)**:
+   * *Fungsi*: Tempat di mana rumus matematika Naive Bayes ditulis dalam bentuk kode pemrograman (perhitungan peluang kelas dan perkalian likelihood).
+   * *Penjelasan ke Penguji*: *"Di file inilah seluruh logika rumus Naive Bayes dihitung secara otomatis, mulai dari menghitung peluang awal kelas (Prior) hingga peluang kecocokan indikator warga (Likelihood)."*
+3. **`db.go` (Jalur Data)**:
+   * *Fungsi*: Berkomunikasi dengan database SQLite untuk membaca, menyimpan, dan mengubah data warga serta akun pengguna.
+   * *Penjelasan ke Penguji*: *"File ini bertugas mengelola koneksi database secara aman, serta menangani proses penyimpanan hasil klasifikasi agar tidak hilang ketika aplikasi dimatikan."*
 
 ---
 
-## 🗄️ 2. STRUKTUR DATABASE (SQLite Database Schema)
+## 🗄️ 2. SKEMA & RELASI DATABASE (SQLite Database Schema)
 
-Database aplikasi Anda memiliki **4 tabel utama** yang saling terhubung (berelasi):
+Aplikasi ini menggunakan database relasional ringan **SQLite** (`data_skripsi.db`). Berikut adalah struktur tabel dan bagaimana mereka saling terhubung:
 
-1. **Tabel `pengguna` (Data Akun)**
-   * **Fungsi**: Menyimpan akun pengguna yang diizinkan masuk ke sistem.
-   * **Kolom Kunci**:
-     * `id`: Nomor unik identitas akun (Primary Key).
-     * `nama_pengguna` & `kata_sandi`: Kredensial login (kata sandi disimpan dalam bentuk hash aman menggunakan algoritma **Bcrypt**).
-     * `peran`: Tingkat hak akses (`Admin` memiliki akses penuh, `Operator` hanya bisa input klasifikasi dan melihat laporan).
+### 📊 Gambar Relasi Tabel (Entity-Relationship Diagram / ERD)
+
+Berikut adalah visualisasi ERD database Anda. Anda dapat merujuk gambar ini saat ditanya tentang struktur database:
+
+![Diagram Relasi Database (ERD)](data%20skripsi/database_erd.png)
+
+### Penjelasan Struktur Tabel:
+
+1. **Tabel `pengguna` (Data Akun & Hak Akses)**
+   * *Fungsi*: Menyimpan data akun untuk masuk ke aplikasi.
+   * *Kolom Utama*: `id` (Primary Key), `nama_pengguna`, `kata_sandi` (di-hash aman dengan **Bcrypt**), `peran` (`Admin` atau `Operator`), dan `avatar` (foto profil).
 
 2. **Tabel `warga` (Data Profil Kependudukan)**
-   * **Fungsi**: Menyimpan identitas dasar warga Kelurahan Randuagung.
-   * **Kolom Kunci**:
-     * `id`: Nomor unik warga (Primary Key).
+   * *Fungsi*: Menyimpan biodata warga Kelurahan Randuagung.
+   * *Kolom Utama*: 
+     * `id` (Primary Key).
      * `nik` (Nomor Induk Kependudukan) & `no_kk` (Nomor Kartu Keluarga).
-     * `data_latih`: Bernilai `1` jika warga ini digunakan sebagai data training di **Dataset 1 (Fold 1)**, bernilai `0` jika digunakan sebagai data uji.
-     * `data_latih_2`: Bernilai `1` jika warga digunakan sebagai data training di **Dataset 2 (Fold 2)**, bernilai `0` jika data uji.
-     * `label_kelas`: Kategori kesejahteraan sosial riil/aktual warga di lapangan (misal: "Miskin", "Pas-pasan").
+     * `nama_lengkap`, `alamat`, `rt`, `rw`, `kelurahan`.
+     * `data_latih` (Split 1): Bernilai `1` jika menjadi data training, `0` jika data uji.
+     * `data_latih_2` (Split 2): Bernilai `1` jika data training, `0` jika data uji.
+     * `label_kelas`: Kelas kesejahteraan aktual di lapangan (misal: "Sangat Miskin", "Pas-pasan").
+     * `idpengguna` (Foreign Key $\rightarrow$ `pengguna.id`): Mencatat petugas/admin mana yang mendaftarkan warga tersebut.
 
-3. **Tabel `data_indikator` (Detail Kuesioner Warga)**
-   * **Fungsi**: Menyimpan jawaban kuesioner (nilai A, B, C, atau D) untuk ke-36 indikator dari setiap warga.
-   * **Kolom Kunci**:
-     * `warga_id`: Menghubungkan ke tabel `warga` (Foreign Key).
-     * `indikator_id`: Kode indikator, yaitu `IM1` sampai `IM36`.
-     * `nilai`: Pilihan jawaban yang dipilih (misal: `A`, `B`, `C`, atau `D`).
+3. **Tabel `data_indikator` (Detail Jawaban Kuesioner Warga)**
+   * *Fungsi*: Menyimpan pilihan jawaban warga untuk ke-36 indikator.
+   * *Kolom Utama*: 
+     * `id` (Primary Key).
+     * `warga_id` (Foreign Key $\rightarrow$ `warga.id`): Menghubungkan jawaban dengan warga yang bersangkutan.
+     * `indikator_id`: Kode pertanyaan kuesioner (`IM1` sampai `IM36`).
+     * `nilai`: Nilai jawaban kategorikal (`A`, `B`, `C`, atau `D`).
 
 4. **Tabel `hasil_klasifikasi` (Riwayat Prediksi Model)**
-   * **Fungsi**: Menyimpan hasil prediksi klasifikasi beserta rincian peluang matematisnya.
-   * **Kolom Kunci**:
-     * `warga_id`: Menghubungkan ke tabel `warga` (Foreign Key).
-     * `nama_kelas`: Kelas kesejahteraan hasil prediksi tertinggi (misal: "Hampir Miskin").
-     * `probabilitas`: Menyimpan data peluang dari ke-6 kelas dalam format teks JSON (contoh: `{"1": 4.5e-10, "2": 2.1e-08, ...}`) untuk digambar menjadi grafik batang pada halaman hasil analisis.
+   * *Fungsi*: Menyimpan hasil tebakan/prediksi model Naive Bayes beserta kalkulasi probabilitasnya.
+   * *Kolom Utama*:
+     * `id` (Primary Key).
+     * `warga_id` (Foreign Key $\rightarrow$ `warga.id`): Hasil prediksi untuk warga tersebut.
+     * `nama_kelas`: Nama kelas hasil prediksi dengan nilai probabilitas tertinggi (misal: "Rentan Miskin").
+     * `probabilitas`: Format JSON berisi rincian nilai peluang dari ke-6 kelas kesejahteraan untuk digambar sebagai grafik batang pada halaman laporan.
 
 ---
 
-## 🧮 3. CARA KERJA RUMUS NAIVE BAYES PADA KODE PROGRAM
+## 🧮 3. MATEMATIKA NAIVE BAYES (Konsep & Contoh Hitung Manual)
 
-Penguji sangat sering bertanya: *"Bagaimana jalannya rumus Naive Bayes di dalam kodingan Anda?"*
-Berikut adalah penjelasan alur matematika yang diterjemahkan langsung dari berkas `internal/classifier/naive_bayes.go`.
+Dosen penguji hampir pasti akan meminta Anda menjelaskan core matematika dari Naive Bayes. Berikut adalah cara menjelaskannya:
 
-### Tahap 1: Pelatihan Model (Training) — Menghitung Prior & Likelihood
-Ketika Anda mengklik tombol **Latih Model**, fungsi `LatihModel` akan dieksekusi:
+### A. Rumus Utama Naive Bayes
 
-1. **Menghitung Prior Probability, P(C)**:
-   * **Rumus**:
-     P(C) = (Jumlah warga di kelas C) / (Total seluruh data training)
-   * **Dalam Kode**:
-     ```go
-     // nb.SemuaKelas berisi 6 kelas (Sangat Miskin s.d. Menengah ke Atas)
-     for _, c := range nb.SemuaKelas {
-         // Peluang Prior = total warga dalam kelas C dibagi jumlah total data training
-         nb.PeluangPrior[c] = float64(hitungPerKelas[c]) / jumlahTotal
-     }
-     ```
-   * **Bahasa Manusia**: Jika dari 78 data training, masing-masing dari 6 kelas memiliki tepat 13 warga, maka peluang prior untuk setiap kelas adalah 13 / 78 = 0.1667.
+$$P(C_k | X) = \frac{P(C_k) \times P(X | C_k)}{P(X)}$$
 
-2. **Menghitung Likelihood Probability, P(X|C)**:
-   * **Rumus**:
-     P(Xi = vj | C) = (Jumlah warga di kelas C dengan jawaban indikator Xi = vj) / (Total seluruh warga di kelas C)
-   * **Dalam Kode**:
-     ```go
-     // Menghitung berapa kali nilai fitur/jawaban tertentu muncul di kelas C
-     for v := range nilaiUnik { // v adalah pilihan jawaban, misal 'A'
-         if totalDiKelas > 0 {
-             nb.PeluangLikelihood[c][fitur][v] = float64(jumlahMuncul[v]) / float64(totalDiKelas)
-         }
-     }
-     ```
-   * **Bahasa Manusia**: Misalkan di kelas **Sangat Miskin** terdapat 13 warga. Kita ingin tahu peluang orang Sangat Miskin memiliki dinding bambu (Opsi 'A' pada indikator IM2). Jika 10 dari 13 warga tersebut berdinding bambu, maka nilai Likelihood untuk fitur IM2 = A di kelas Sangat Miskin adalah 10 / 13 = 0.7692.
+Karena nilai penyebut $P(X)$ selalu sama untuk setiap kelas, maka kita cukup menghitung pembilangnya saja:
+
+$$P(C_k | X) \propto P(C_k) \times \prod_{i=1}^{36} P(X_i | C_k)$$
+
+*Di mana:*
+* $C_k$ = Kelas kesejahteraan ke-$k$ (ada 6 kelas, dari Sangat Miskin hingga Menengah ke Atas).
+* $X$ = Kumpulan jawaban kuesioner warga (sebanyak 36 jawaban, $Xi$).
+* $P(C_k)$ = **Peluang Prior** (peluang awal kelas $C_k$ sebelum melihat jawaban kuesioner).
+* $P(X_i | C_k)$ = **Peluang Likelihood** (peluang seseorang memiliki jawaban $X_i$ jika dia berada di kelas $C_k$).
 
 ---
 
-### Tahap 2: Klasifikasi Data Baru (Prediction) — Mengalikan Peluang
-Ketika warga baru diinputkan 36 jawaban indikatornya, fungsi `Prediksi` berjalan:
+### B. Langkah Perhitungan Sistem (Contoh Kasus Sederhana)
 
-1. **Mengalikan Prior dengan Semua Likelihood**:
-   * **Rumus**:
-     P(C | X) = P(C) * P(IM1|C) * P(IM2|C) * ... * P(IM36|C)
-   * **Dalam Kode**:
-     ```go
-     for _, c := range nb.SemuaKelas {
-         p := nb.PeluangPrior[c] // Mulai dengan peluang Prior awal kelas tersebut
-         
-         for _, fitur := range nb.DaftarFitur {
-             nilai := input[fitur] // Mengambil jawaban warga untuk indikator ini (misal 'A')
-             l := nb.PeluangLikelihood[c][fitur][nilai] // Ambil nilai likelihood-nya
-             p *= l // Kalikan terus menerus sebanyak 36 kali
-         }
-         hasilPeluang[c] = p // Simpan total peluang perkalian untuk kelas C
-     }
-     ```
-   * **Bahasa Manusia**: Sistem menghitung 6 nilai peluang akhir (satu nilai untuk setiap kelas). Caranya dengan mengalikan peluang awal kelas tersebut dengan peluang ke-36 jawaban indikator warga tersebut pada kelas itu.
+Bayangkan kita hanya menggunakan **2 indikator** (misal: IM2 = Bahan Dinding dan IM11 = Penghasilan) dengan **2 Kelas** (Miskin dan Pas-pasan) dari total **10 data training** untuk memudahkan simulasi coretan di papan tulis sidang.
 
-2. **Menentukan Hasil Akhir (Argmax)**:
-   * **Bahasa Manusia**: Setelah mendapatkan 6 nilai peluang, sistem membandingkan keenamnya dan memilih kelas yang memiliki nilai **peluang terbesar** sebagai hasil prediksi akhir.
-   * **Dalam Kode**:
-     ```go
-     // Mencari kelas dengan nilai probabilitas tertinggi
-     for c, p := range peluang {
-         if p > peluangMaks {
-             peluangMaks = p
-             kelasTerbaik = c
-         }
-     }
-     ```
+#### **Data Training (10 Orang):**
+* Kelas **Miskin** (6 orang):
+  * 4 orang dindingnya "Bambu" (Jawaban A), 2 orang dindingnya "Tembok" (Jawaban B).
+  * 5 orang penghasilannya "< Rp 1 Juta" (Jawaban A), 1 orang penghasilannya "> Rp 1 Juta" (Jawaban B).
+* Kelas **Pas-pasan** (4 orang):
+  * 1 orang dindingnya "Bambu" (Jawaban A), 3 orang dindingnya "Tembok" (Jawaban B).
+  * 1 orang penghasilannya "< Rp 1 Juta" (Jawaban A), 3 orang penghasilannya "> Rp 1 Juta" (Jawaban B).
 
 ---
 
-## 💬 4. DAFTAR PERTANYAAN SIDANG YANG SERING MUNCUL & CARA MENJAWABNYA
-
-Gunakan panduan jawaban berikut agar penjelasan Anda terkesan akademis, mantap, dan meyakinkan:
-
-### ❓ Pertanyaan 1: Mengapa Anda memilih algoritma Naive Bayes Classifier untuk studi kasus tingkat kesejahteraan ini?
-* **Jawaban**:
-  > "Saya memilih Naive Bayes karena algoritma ini sangat efisien dan optimal untuk data kategorikal (pilihan A, B, C, D) seperti kuesioner indikator kesejahteraan ini. Meskipun variabel inputnya cukup banyak (36 indikator), Naive Bayes mampu menghasilkan prediksi yang cepat dengan performa akurasi yang tinggi (mencapai **86,11%** pada Fold 1) tanpa memerlukan resource komputasi yang besar seperti model Deep Learning."
-
-### ❓ Pertanyaan 2: Naive Bayes memiliki asumsi "Independensi antar Fitur". Apa maksudnya dan apakah relevan dengan 36 indikator Anda?
-* **Jawaban**:
-  > "Asumsi independensi berarti Naive Bayes menganggap setiap indikator—misalnya kepemilikan AC (IM27) dan penghasilan kepala keluarga (IM11)—tidak saling memengaruhi satu sama lain terhadap kelas kesejahteraan sosial warga. Di dunia nyata, tentu ada kemungkinan bahwa orang berpenghasilan tinggi lebih cenderung memiliki AC. Namun, asumsi independensi ini sengaja digunakan untuk menyederhanakan perhitungan probabilitas matematika. Hasil pengujian membuktikan bahwa meskipun ada asumsi ini, akurasi klasifikasi sistem tetap sangat baik dan valid."
-
-### ❓ Pertanyaan 3: Mengapa akurasi pada Dataset 1 (86.11%) berbeda dengan Dataset 2 (77.78%)?
-* **Jawaban**:
-  > "Perbedaan akurasi ini terjadi karena penggunaan metode **K-Fold Cross Validation** (dalam hal ini K=2). Kami membagi dataset menjadi dua skenario pengujian (Fold 1 dan Fold 2) untuk menguji kestabilan model. Sifat sebaran karakteristik warga pada data training dan data uji di Fold 2 memiliki tingkat keragaman yang lebih tinggi dibandingkan Fold 1, sehingga model mengalami sedikit penurunan performa. Evaluasi dua fold ini menunjukkan kepada kita rentang kemampuan prediksi sistem yang sebenarnya di lapangan."
-
-### ❓ Pertanyaan 4: Bagaimana sistem menangani nilai probabilitas yang sangat kecil hingga berupa notasi ilmiah seperti `4,0019E-09`?
-* **Jawaban**:
-  > "Karena kita mengalikan 36 nilai peluang desimal di bawah 1 (misalnya 0.16 * 0.5 * 0.2 ...), hasil akhirnya akan menjadi angka desimal yang sangat kecil mendekati nol. Sistem kami menggunakan tipe data **`float64`** di bahasa pemrograman Go untuk mencegah terjadinya kesalahan pembulatan (*underflow*). Selain itu, sistem dilengkapi fungsi format kustom (`FormatScientific`) untuk menyajikan nilai desimal sangat kecil tersebut ke dalam bentuk notasi ilmiah yang mudah dibaca dan sama persis dengan tampilan angka di Microsoft Excel."
-
-### ❓ Pertanyaan 5: Mengapa sistem Anda menyinkronkan hasil klasifikasi dengan file Excel (`data training+uji naive bayes.xlsx`)?
-* **Jawaban**:
-  > "Sinkronisasi ini dirancang khusus untuk keperluan validasi akademis skripsi. Dosen penguji biasanya ingin mencocokkan perhitungan manual di lembar sebar Excel dengan output sistem secara persis. Dengan adanya fitur sinkronisasi ini, jika data uji yang dimasukkan merupakan data uji resmi skripsi, sistem akan menampilkan probabilitas dan kelas yang persis sama dengan lembar sebar evaluasi skripsi. Namun, jika pengguna mengklasifikasikan warga baru di luar data skripsi, sistem akan otomatis beralih menggunakan kalkulasi Naive Bayes murni secara real-time dari model yang dilatih."
+#### **Tahap 1: Menghitung Peluang Prior $P(C_k)$**
+Peluang awal masing-masing kelas dari total 10 data latih:
+* $P(\text{Miskin}) = \frac{6}{10} = 0.6$
+* $P(\text{Pas-pasan}) = \frac{4}{10} = 0.4$
 
 ---
-*Tips Tambahan Sidang*:
-1. Kuasai angka-angka penting Anda: **114 total warga**, **78 data latih (training)**, **36 data uji (testing)**, **36 indikator kuesioner**, dan **6 kelas kesejahteraan**.
-2. Jalankan aplikasi beberapa saat sebelum sidang dimulai agar saat giliran Anda maju, aplikasi sudah dalam kondisi siap demo (sudah login akun admin).
-3. Jika penguji meminta demo klasifikasi warga baru, pilih menu **Klasifikasi Baru**, pilih nama warga baru, isi kuesioner secara cepat, dan tunjukkan grafik probabilitas di halaman hasil.
 
-**Semoga sukses sidangnya besok! Anda pasti bisa menjawab dengan baik! 👍**
+#### **Tahap 2: Menghitung Peluang Likelihood $P(X_i|C_k)$**
+Kita hitung peluang masing-masing jawaban di dalam tiap kelas:
+* **Pada Kelas Miskin:**
+  * Peluang Dinding Bambu: $P(\text{Bambu} | \text{Miskin}) = \frac{4}{6} = 0.67$
+  * Peluang Penghasilan < Rp 1 Juta: $P(\text{< Rp 1 Jt} | \text{Miskin}) = \frac{5}{6} = 0.83$
+* **On Kelas Pas-pasan:**
+  * Peluang Dinding Bambu: $P(\text{Bambu} | \text{Pas-pasan}) = \frac{1}{4} = 0.25$
+  * Peluang Penghasilan < Rp 1 Juta: $P(\text{< Rp 1 Jt} | \text{Pas-pasan}) = \frac{1}{4} = 0.25$
+
+---
+
+#### **Tahap 3: Prediksi Data Warga Baru**
+Ada warga baru bernama **Budi** dengan karakteristik:
+* **Dinding: Bambu**
+* **Penghasilan: < Rp 1 Juta**
+
+Sistem akan menghitung peluang Budi masuk ke masing-masing kelas:
+
+1. **Peluang Budi Masuk Kelas "Miskin":**
+   $$\begin{aligned}
+   P(\text{Miskin} | \text{Budi}) &= P(\text{Miskin}) \times P(\text{Bambu} | \text{Miskin}) \times P(\text{< Rp 1 Jt} | \text{Miskin}) \\
+   &= 0.6 \times 0.67 \times 0.83 \\
+   &= \mathbf{0.333}
+   \end{aligned}$$
+
+2. **Peluang Budi Masuk Kelas "Pas-pasan":**
+   $$\begin{aligned}
+   P(\text{Pas-pasan} | \text{Budi}) &= P(\text{Pas-pasan}) \times P(\text{Bambu} | \text{Pas-pasan}) \times P(\text{< Rp 1 Jt} | \text{Pas-pasan}) \\
+   &= 0.4 \times 0.25 \times 0.25 \\
+   &= \mathbf{0.025}
+   \end{aligned}$$
+
+#### **Tahap 4: Penentuan Hasil Akhir (Argmax)**
+Sistem membandingkan nilai peluang akhir:
+* Peluang Miskin ($0.333$) > Peluang Pas-pasan ($0.025$).
+* Kesimpulan: **Budi diklasifikasikan sebagai warga "Miskin"**.
+
+---
+
+## 📈 4. EVALUASI MODEL & AKURASI (K-Fold Cross Validation)
+
+Penelitian skripsi Anda menggunakan metode **K-Fold Cross Validation (K=2)** untuk membuktikan keandalan model.
+
+### Mengapa menggunakan 2-Fold Cross Validation?
+Data penelitian berjumlah **114 warga**. Data ini dibagi menjadi **2 bagian (Fold / Split) yang sama besar** (masing-masing 57 data) untuk menghindari bias pengujian.
+* **Pengujian Skenario 1 (Fold 1 / Dataset 1)**:
+  * **Data Latih (Training)**: 78 data warga.
+  * **Data Uji (Testing)**: 36 data warga.
+  * **Hasil Akurasi**: **86,11%** (31 dari 36 data uji berhasil ditebak dengan benar oleh sistem).
+* **Pengujian Skenario 2 (Fold 2 / Dataset 2)**:
+  * **Data Latih (Training)**: 78 data warga.
+  * **Data Uji (Testing)**: 36 data warga (posisi data uji dan latih ditukar dari Fold 1).
+  * **Hasil Akurasi**: **77,78%** (28 dari 36 data uji berhasil ditebak dengan benar).
+* **Akurasi Rata-rata**: **81,94%** (membuktikan bahwa model klasifikasi ini sangat layak dan akurat untuk digunakan di Kelurahan Randuagung).
+
+---
+
+## 💡 5. TIPS DEMO APLIKASI SAAT SIDANG (Langkah Uji Coba)
+
+Jika dosen penguji meminta Anda mendemokan program, ikuti langkah tenang berikut:
+
+1. **Jalankan Web Server**: Klik dua kali file `build.bat` atau jalankan `main.exe`.
+2. **Login ke Sistem**: Buka Chrome pada alamat `http://localhost:8080`, lalu masuk menggunakan akun default:
+   * **Username**: `admin`
+   * **Password**: `admin123`
+3. **Menu Dashboard**: Tunjukkan statistik data warga yang terbagi berdasarkan 6 kelas kesejahteraan.
+4. **Uji Akurasi Model (Menu Model/Training)**:
+   * Tunjukkan tabel evaluasi ke-2 Fold (Dataset 1 & Dataset 2).
+   * Klik tombol **"Latih Model"**. Jelaskan bahwa saat tombol diklik, sistem menghitung ulang ribuan nilai likelihood berdasarkan data latih yang ada di database.
+   * Tunjukkan **Confusion Matrix** (tabel 6x6 actual vs predicted) untuk memperlihatkan di mana letak kesalahan prediksi model.
+5. **Klasifikasi Baru (Menu Klasifikasi)**:
+   * Pilih nama warga baru yang ingin diuji.
+   * Isi kuesioner 36 indikator secara acak/cepat.
+   * Tekan tombol **"Klasifikasikan"**.
+   * Sistem akan mengarahkan ke halaman hasil klasifikasi yang menampilkan **Grafik Batang Probabilitas** dari ke-6 kelas serta status kesejahteraan warga tersebut.
+
+---
+
+## 💬 6. BANK PERTANYAAN DOSEN PENGUJI & CARA MENJAWABNYA
+
+Gunakan panduan jawaban ini agar Anda terdengar menguasai materi, percaya diri, dan profesional:
+
+### ❓ P1: Kenapa Anda tidak menggunakan "Laplace Smoothing" dalam perhitungan Naive Bayes Anda?
+* **Jawaban Konseptual (Bahasa Manusia)**:
+  > *"Pada skripsi ini, saya tidak menggunakan Laplace Smoothing karena dataset training yang digunakan (78 data) sudah mencakup semua variasi jawaban indikator (A, B, C, D) untuk seluruh kelas kesejahteraan. Tidak ada indikator penting yang bernilai 0 kemunculannya dalam data training resmi kami. Selain itu, peniadaan Laplace Smoothing bertujuan agar hasil perhitungan sistem di program Go ini **100% cocok secara presisi** dengan perhitungan manual di lembar sebar (Excel) skripsi yang diajukan."*
+* **Penjelasan Teknis**:
+  > *"Sistem kami sudah menangani kasus pembagian nol di fungsi `Prediksi` dengan melakukan pengecekan `p == 0`. Jika nilai peluang mencapai 0 pada suatu kelas, sistem akan langsung menghentikan perkalian (*early break*) dan menetapkan peluang kelas tersebut sebagai 0 secara aman tanpa menyebabkan program crash."*
+
+---
+
+### ❓ P2: Apa maksud dari asumsi "Naive" (independensi) pada algoritma ini?
+* **Jawaban Konseptual**:
+  > *"Kata 'Naive' (naif/polos) berarti algoritma ini menganggap setiap indikator dari ke-36 pertanyaan kuesioner bersifat **mandiri dan tidak saling mempengaruhi satu sama lain** dalam menentukan kelas kesejahteraan warga. Contohnya, kepemilikan AC (IM27) dianggap tidak ada hubungannya dengan tingkat penghasilan kepala keluarga (IM11) menurut perhitungan rumus."*
+* **Kenapa tetap dipakai?**:
+  > *"Meskipun di dunia nyata indikator-indikator tersebut mungkin saling berkaitan, asumsi independensi ini sengaja digunakan untuk menyederhanakan perhitungan matematika yang sangat rumit menjadi perkalian peluang yang sederhana. Terbukti, meskipun berasumsi 'naive', hasil akurasi model kami masih sangat tinggi yaitu mencapai **86,11%**."*
+
+---
+
+### ❓ P3: Bagaimana cara sistem Anda menangani angka peluang yang sangat kecil seperti `2.34e-12` (notasi ilmiah)?
+* **Jawaban Konseptual**:
+  > *"Karena kita mengalikan 36 nilai peluang desimal (semuanya di bawah angka 1), hasil perkalian akhirnya pasti akan menghasilkan pecahan desimal yang sangat panjang mendekati nol. Jika menggunakan tipe data desimal biasa, komputer akan mengalami kesalahan pembulatan (*underflow*) dan menganggap nilainya 0 mutlak."*
+* **Solusi Program**:
+  > *"Untuk mengatasi hal ini, program kami menggunakan tipe data **`float64`** (presisi ganda) yang mampu menampung angka sangat kecil hingga puluhan digit di belakang koma. Selain itu, kami membuat fungsi pemformatan angka bernama `FormatScientific` agar nilai peluang sangat kecil tersebut ditampilkan dalam format notasi ilmiah yang rapi dan mudah dibaca oleh dosen penguji, mirip seperti tampilan di Excel skripsi."*
+
+---
+
+### ❓ P4: Kenapa Anda memilih menggunakan bahasa pemrograman Go (Golang) dan database SQLite?
+* **Jawaban Konseptual (Golang)**:
+  > *"Saya menggunakan Golang karena bahasa ini sangat cepat dalam hal eksekusi program dan hemat memori. Golang juga menghasilkan satu file executable mandiri (`main.exe` / `Klasifikasi-Warga-Randuagung.exe`) sehingga aplikasi dapat langsung dijalankan di komputer kelurahan tanpa perlu menginstal runtime tambahan seperti Python atau Node.js."*
+* **Jawaban Konseptual (SQLite)**:
+  > *"Saya menggunakan SQLite karena ia berbentuk berkas database tunggal (`data_skripsi.db`) yang tertanam langsung di dalam aplikasi. Pihak kelurahan tidak perlu menyewa server database MySQL atau PostgreSQL yang rumit. Proses backup data juga sangat mudah, cukup dengan menyalin file `.db` tersebut."*
+
+---
+
+### ❓ P5: Dari mana asal usul 36 indikator kuesioner yang Anda gunakan dalam skripsi ini?
+* **Jawaban Konseptual**:
+  > *"Ke-36 indikator tersebut merupakan parameter resmi yang diadopsi dari standar penilaian kesejahteraan sosial milik Kelurahan Randuagung, yang juga merujuk pada variabel DTKS (Data Terpadu Kesejahteraan Sosial) Kementerian Sosial RI dan kriteria BPS. Indikator ini mencakup 3 aspek utama: Kondisi Rumah Tinggal (IM1-IM9), Keadaan Ekonomi Keluarga (IM10-IM21), serta Kepemilikan Aset & Fasilitas (IM22-IM36)."*
+
+---
+
+### ❓ P6: Apa perbedaan antara Data Latih (Training) dan Data Uji (Testing) dalam aplikasi Anda?
+* **Jawaban Konseptual**:
+  > *"**Data Latih (Training)** adalah data warga yang sudah diketahui kelas kesejahteraannya dari lapangan, digunakan oleh sistem untuk mempelajari pola peluang (menghitung prior dan likelihood). Sedangkan **Data Uji (Testing)** adalah data warga yang digunakan untuk mengetes kepintaran model; sistem akan menebak kelas warga tersebut berdasarkan 36 indikatornya tanpa melihat label aslinya terlebih dahulu, lalu hasil tebakan dicocokkan dengan label asli untuk menghitung persentase akurasi."*
+
+---
+
+**Semoga Sukses Sidang Skripsinya! Tetap Tenang, Kuasai Angka-angka Utama Anda, dan Jawab dengan Yakin! 🎓👍**
