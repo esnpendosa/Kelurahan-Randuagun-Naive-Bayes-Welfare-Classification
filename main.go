@@ -578,10 +578,10 @@ func main() {
 			// Pastikan menggunakan dataset yang paling bagus (Split 1 / 86.11% akurasi)
 			modelTerbaik := classifier.BuatModelBaru()
 			modelTerbaik.DaftarFitur = namaFitur
+			var inputLatih []map[string]string
+			var targetLatih []classifier.KelasKesejahteraan
 			dataLatihTerbaik, err := db.AmbilDataLatihSplit(dbSistem, 1)
 			if err == nil && len(dataLatihTerbaik) > 0 {
-				var inputLatih []map[string]string
-				var targetLatih []classifier.KelasKesejahteraan
 				for _, dl := range dataLatihTerbaik {
 					inputLatih = append(inputLatih, dl.Indikator)
 					targetLatih = append(targetLatih, classifier.KelasKesejahteraan(dl.Kelas))
@@ -592,6 +592,21 @@ func main() {
 			}
 
 			peluangNB := modelTerbaik.Prediksi(inputan)
+
+			// Cek apakah semua peluang bernilai 0 (zero-frequency problem)
+			semuaNol := true
+			for _, v := range peluangNB {
+				if v > 0 {
+					semuaNol = false
+					break
+				}
+			}
+
+			// Jika semua 0, gunakan Laplace Smoothing sebagai fallback
+			if semuaNol && len(inputLatih) > 0 {
+				peluangNB = modelTerbaik.PrediksiLaplace(inputan, inputLatih, targetLatih)
+			}
+
 			kelasTerbaik := modelTerbaik.AmbilKelasTerbaik(peluangNB)
 			prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 			for k, v := range peluangNB {

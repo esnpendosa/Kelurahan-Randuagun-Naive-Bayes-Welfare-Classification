@@ -127,6 +127,48 @@ func (nb *KlasifikasiNaiveBayes) Prediksi(input map[string]string) map[KelasKese
 	return hasilPeluang // Kembalikan map probabilitas untuk setiap kelas
 }
 
+// PrediksiLaplace menghitung probabilitas dengan Laplace Smoothing untuk menghindari peluang 0
+func (nb *KlasifikasiNaiveBayes) PrediksiLaplace(input map[string]string, data []map[string]string, target []KelasKesejahteraan) map[KelasKesejahteraan]float64 {
+	hasilPeluang := make(map[KelasKesejahteraan]float64)
+	jumlahTotal := float64(len(target))
+	hitungPerKelas := make(map[KelasKesejahteraan]int)
+	for _, t := range target {
+		hitungPerKelas[t]++
+	}
+
+	for _, c := range nb.SemuaKelas {
+		// Prior dengan Laplace Smoothing: (count(c) + 1) / (N + K)
+		p := float64(hitungPerKelas[c] + 1) / (jumlahTotal + float64(len(nb.SemuaKelas)))
+
+		for _, fitur := range nb.DaftarFitur {
+			nilai := input[fitur]
+			jumlahMuncul := 0
+			totalDiKelas := 0
+			nilaiUnik := make(map[string]bool)
+			for i, baris := range data {
+				nilaiUnik[baris[fitur]] = true
+				if target[i] == c {
+					totalDiKelas++
+					if baris[fitur] == nilai {
+						jumlahMuncul++
+					}
+				}
+			}
+
+			v := len(nilaiUnik)
+			if v == 0 {
+				v = 4
+			}
+
+			// Likelihood dengan Laplace Smoothing: (count(fitur=nilai|c) + 1) / (count(c) + V)
+			l := float64(jumlahMuncul + 1) / float64(totalDiKelas + v)
+			p *= l
+		}
+		hasilPeluang[c] = p
+	}
+	return hasilPeluang
+}
+
 // AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
 	var kelasTerbaik KelasKesejahteraan = 1 // default
