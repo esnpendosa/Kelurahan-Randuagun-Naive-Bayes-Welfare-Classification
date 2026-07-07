@@ -716,7 +716,7 @@
     // On page load
     document.addEventListener("DOMContentLoaded", function() {
         // Cek jika ada hasil evaluasi yang baru diproses
-        const hasResult = {{.HasResult}};
+        const hasResult = "{{.HasResult}}" === "true";
         if (hasResult) {
             switchTab('tab-results');
         } else {
