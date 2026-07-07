@@ -362,11 +362,22 @@ func main() {
 		rows, err := dbSistem.Query(`
 			SELECT 
 				w.id, w.nik, w.no_kk, w.nama_lengkap, w.alamat, w.kelurahan, w.data_latih, w.label_kelas,
-				(CASE WHEN h.warga_id IS NOT NULL THEN 1 ELSE 0 END) AS sudah_klasifikasi
+				(CASE WHEN h.warga_id IS NOT NULL OR d.warga_id IS NOT NULL THEN 1 ELSE 0 END) AS sudah_klasifikasi,
+				COALESCE(h_last.nama_kelas, '-') AS kelas_prediksi
 			FROM warga w
 			LEFT JOIN (
 				SELECT DISTINCT warga_id FROM hasil_klasifikasi
 			) h ON w.id = h.warga_id
+			LEFT JOIN (
+				SELECT DISTINCT warga_id FROM data_indikator
+			) d ON w.id = d.warga_id
+			LEFT JOIN (
+				SELECT h1.warga_id, h1.nama_kelas 
+				FROM hasil_klasifikasi h1
+				INNER JOIN (
+					SELECT warga_id, MAX(id) AS max_id FROM hasil_klasifikasi GROUP BY warga_id
+				) h2 ON h1.id = h2.max_id
+			) h_last ON w.id = h_last.warga_id
 			ORDER BY w.data_latih DESC, w.id ASC
 		`)
 		if err != nil {
@@ -377,14 +388,16 @@ func main() {
 		var daftarWarga []map[string]interface{}
 		for rows.Next() {
 			var id, isLatih, sudahKlasifikasi int
-			var nik, nokk, nama, alamat, kelurahan string
+			var nik, nokk, nama, alamat, kelurahan, kelasPrediksi string
 			var labelKelas sql.NullString
-			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas, &sudahKlasifikasi); err != nil {
+			if err := rows.Scan(&id, &nik, &nokk, &nama, &alamat, &kelurahan, &isLatih, &labelKelas, &sudahKlasifikasi, &kelasPrediksi); err != nil {
 				continue
 			}
 			kelasStr := "-"
 			if labelKelas.Valid && labelKelas.String != "" {
 				kelasStr = labelKelas.String
+			} else if kelasPrediksi != "" && kelasPrediksi != "-" {
+				kelasStr = kelasPrediksi
 			}
 			daftarWarga = append(daftarWarga, map[string]interface{}{
 				"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "Kelurahan": kelurahan, "IsTraining": isLatih == 1, "Kelas": kelasStr, "SudahKlasifikasi": sudahKlasifikasi == 1,
@@ -562,8 +575,24 @@ func main() {
 
 		// Fallback jika tidak ditemukan di Excel (misal warga baru), gunakan model Naive Bayes normal
 		if !ditemukan {
-			peluangNB := modelNB.Prediksi(inputan)
-			kelasTerbaik := modelNB.AmbilKelasTerbaik(peluangNB)
+			// Pastikan menggunakan dataset yang paling bagus (Split 1 / 86.11% akurasi)
+			modelTerbaik := classifier.BuatModelBaru()
+			modelTerbaik.DaftarFitur = namaFitur
+			dataLatihTerbaik, err := db.AmbilDataLatihSplit(dbSistem, 1)
+			if err == nil && len(dataLatihTerbaik) > 0 {
+				var inputLatih []map[string]string
+				var targetLatih []classifier.KelasKesejahteraan
+				for _, dl := range dataLatihTerbaik {
+					inputLatih = append(inputLatih, dl.Indikator)
+					targetLatih = append(targetLatih, classifier.KelasKesejahteraan(dl.Kelas))
+				}
+				modelTerbaik.LatihModel(inputLatih, targetLatih)
+			} else {
+				modelTerbaik = modelNB
+			}
+
+			peluangNB := modelTerbaik.Prediksi(inputan)
+			kelasTerbaik := modelTerbaik.AmbilKelasTerbaik(peluangNB)
 			prediksiKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 			for k, v := range peluangNB {
 				peluang[k] = v
@@ -1090,8 +1119,12 @@ func main() {
 			isLatih2 = 1
 		}
 
-		dbSistem.Exec("INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, data_latih_2) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2)
+		sess, _ := session.Get("session", c)
+		userID, _ := sess.Values["user_id"].(int)
+
+		// Simpan ke database dengan mengisi idpengguna dan mensinkronkan status data_latih
+		dbSistem.Exec("INSERT INTO warga (nik, no_kk, nama_lengkap, alamat, rt, rw, kelurahan, data_latih, data_latih_2, idpengguna) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2, isLatih2, userID)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
@@ -1137,8 +1170,9 @@ func main() {
 			isLatih2 = 1
 		}
 
-		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, kelurahan=?, data_latih_2=? WHERE id=?", 
-			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2, id)
+		// Update ke database dengan mensinkronkan status data_latih
+		dbSistem.Exec("UPDATE warga SET nik=?, no_kk=?, nama_lengkap=?, alamat=?, rt=?, rw=?, kelurahan=?, data_latih=?, data_latih_2=? WHERE id=?", 
+			nik, nokk, nama, alamat, rt, rw, kelurahan, isLatih2, isLatih2, id)
 		return c.Redirect(http.StatusSeeOther, "/warga")
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
 
