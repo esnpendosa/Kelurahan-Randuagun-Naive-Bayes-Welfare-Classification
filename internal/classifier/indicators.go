@@ -1,17 +1,20 @@
-package classifier
+package classifier // Paket classifier menyimpan seluruh logika perhitungan algoritma Naive Bayes dan indikatornya
 
+// Pilihan merepresentasikan opsi jawaban dari suatu kuesioner indikator (misalnya: A, B, C, D) beserta keterangannya
 type Pilihan struct {
-	Kode string
-	Ket  string
+	Kode string // Kode opsi jawaban (contoh: "A", "B", "C", "D")
+	Ket  string // Penjelasan atau deskripsi dari opsi tersebut (contoh: "Milik sendiri")
 }
 
+// Indikator merepresentasikan satu butir pertanyaan indikator kesejahteraan (terdapat 36 indikator IM1 s.d. IM36)
 type Indikator struct {
-	ID      string
-	Label   string
-	Pilihan []Pilihan
-	Bagian  string
+	ID      string    // Kode unik indikator (contoh: "IM1", "IM2", dst.)
+	Label   string    // Pertanyaan atau judul indikator (contoh: "Status Kepemilikan Rumah (IM 1)")
+	Pilihan []Pilihan // Daftar opsi jawaban yang tersedia untuk indikator ini
+	Bagian  string    // Pengelompokan indikator (Kondisi Rumah, Ekonomi Keluarga, atau Aset & Fasilitas)
 }
 
+// AmbilDaftarIndikator mengembalikan daftar lengkap berisi 36 indikator kesejahteraan sosial yang digunakan dalam sistem
 func AmbilDaftarIndikator() []Indikator {
 	return []Indikator{
 		{ID: "IM1", Label: "Status Kepemilikan Rumah (IM 1)", Bagian: "Kondisi Rumah", Pilihan: []Pilihan{
