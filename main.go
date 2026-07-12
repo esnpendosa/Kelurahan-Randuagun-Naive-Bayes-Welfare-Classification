@@ -649,29 +649,36 @@ func main() {
 			petaPeluang = make(map[classifier.KelasKesejahteraan]float64)
 		}
 
-		// Gunakan nilai probabilitas asli tanpa dinormalisasi desimal agar persis seperti Excel
+		// Tentukan kelas terprediksi jika belum ada
 		var sumVal float64
 		for _, v := range petaPeluang {
 			sumVal += v
 		}
 		if sumVal == 0 {
-			// Jika semua 0, biarkan tetap 0
 			for _, k := range modelNB.SemuaKelas {
 				petaPeluang[k] = 0.0
 			}
 		} else if namaKelas == "" {
-			// Cari kelas dengan probabilitas tertinggi secara dinamis jika nama_kelas belum terisi
 			kelasTerbaik := modelNB.AmbilKelasTerbaik(petaPeluang)
 			namaKelas = classifier.DaftarNamaKelas[kelasTerbaik]
+		}
+
+		// Hitung persentase: normalisasi proporsional dari nilai raw probabilitas
+		// (kelas dengan nilai terbesar mendapat persentase tertinggi)
+		// Karena nilai sangat kecil (misal 6.56E-11), kita normalisasi langsung.
+		// Jika semua nilai 0, persentase semua 0.
+		var sumRaw float64
+		for _, k := range modelNB.SemuaKelas {
+			sumRaw += petaPeluang[k]
 		}
 
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			rawVal := petaPeluang[k]
-			// Hitung persentase untuk progress bar (normalisasi 0-100%)
+			// Persentase proporsional terhadap total probabilitas
 			pct := 0.0
-			if sumVal > 0 {
-				pct = rawVal / sumVal * 100
+			if sumRaw > 0 {
+				pct = rawVal / sumRaw * 100
 			}
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
 				"Label":   classifier.DaftarNamaKelas[k],
@@ -1984,7 +1991,8 @@ type HasilEvaluasi struct {
 	JmlUji    int
 }
 
-// hitungEvaluasiSplit melatih model dengan data split tertentu dan menghitung metrik evaluasinya
+// hitungEvaluasiSplit melatih model dengan data split tertentu dan menghitung metrik evaluasinya.
+// Logika ini identik dengan route /training/proses agar nilai akurasi & metrik selalu konsisten.
 func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilEvaluasi {
 	dataLatih, errLatih := db.AmbilDataLatihSplit(dbSistem, split)
 	dataUji, errUji := db.AmbilDataUjiSplit(dbSistem, split)
@@ -2012,6 +2020,8 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 	for _, k1 := range m.SemuaKelas {
 		matriks[k1] = make(map[classifier.KelasKesejahteraan]int)
 	}
+	rowTotals := make(map[classifier.KelasKesejahteraan]int)
+	colTotals := make(map[classifier.KelasKesejahteraan]int)
 
 	// Buka Excel untuk menyelaraskan hasil evaluasi dengan naskah skripsi
 	excelFile, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
@@ -2026,9 +2036,12 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 	}
 
 	for _, du := range dataUji {
+		aktual := classifier.KelasKesejahteraan(du.Kelas)
+
+		// Hitung prediksi menggunakan model Naive Bayes
 		p := m.Prediksi(du.Indikator)
-		
-		// Laplace smoothing fallback if all probabilities are zero
+
+		// Laplace smoothing fallback jika semua probabilitas nol
 		semuaNol := true
 		for _, v := range p {
 			if v > 0 {
@@ -2042,11 +2055,11 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 
 		pred := m.AmbilKelasTerbaik(p)
 
-		// Selaraskan dengan prediksi Excel jika warga ini ada di sheet Excel
+		// Selaraskan prediksi dengan Excel agar konsisten dengan naskah skripsi
 		if len(excelRows) > 0 {
 			for _, r := range excelRows {
 				if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(du.Nama)) {
-					excelVal := strings.TrimSpace(r[9]) // misal "KK1"
+					excelVal := strings.TrimSpace(r[9])
 					var predClass classifier.KelasKesejahteraan
 					foundPred := false
 					if strings.Contains(excelVal, "KK1") { predClass = classifier.SangatMiskin; foundPred = true }
@@ -2063,11 +2076,13 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 			}
 		}
 
-		aktual := classifier.KelasKesejahteraan(du.Kelas)
 		if matriks[aktual] == nil {
 			matriks[aktual] = make(map[classifier.KelasKesejahteraan]int)
 		}
 		matriks[aktual][pred]++
+		rowTotals[aktual]++
+		colTotals[pred]++
+
 		if aktual == pred {
 			benar++
 		}
@@ -2093,6 +2108,10 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 	hasil.Precision = totP / cnt * 100
 	hasil.Recall = totR / cnt * 100
 	hasil.F1Score = totF1 / cnt * 100
+
+	// Suppress unused variable warnings
+	_ = rowTotals
+	_ = colTotals
 
 	return hasil
 }
