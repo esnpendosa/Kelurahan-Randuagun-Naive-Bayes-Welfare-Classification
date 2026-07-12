@@ -1152,6 +1152,9 @@ func main() {
 			data := map[string]interface{}{
 				"User":  ambilDataPengguna(c),
 				"Error": fmt.Sprintf("NIK %s sudah terdaftar dalam sistem. Setiap warga hanya dapat didaftarkan satu kali.", nik),
+				"Warga": map[string]interface{}{
+					"NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "RT": rt, "RW": rw, "Kelurahan": kelurahan, "IsLatih2": isLatih2 == 1,
+				},
 			}
 			return c.Render(http.StatusOK, "warga_tambah.html", data)
 		}
@@ -1205,6 +1208,21 @@ func main() {
 		isLatih2 := 0
 		if peran == "1" {
 			isLatih2 = 1
+		}
+
+		// Cek apakah NIK baru sudah terdaftar untuk warga lain
+		var existingID int
+		err := dbSistem.QueryRow("SELECT id FROM warga WHERE nik = ? AND id != ?", nik, id).Scan(&existingID)
+		if err == nil && existingID > 0 {
+			// NIK sudah terdaftar - kembalikan ke form dengan pesan error
+			data := map[string]interface{}{
+				"User":  ambilDataPengguna(c),
+				"Error": fmt.Sprintf("NIK %s sudah terdaftar untuk warga lain. NIK harus bersifat unik.", nik),
+				"Warga": map[string]interface{}{
+					"ID": id, "NIK": nik, "NoKK": nokk, "NamaKK": nama, "Alamat": alamat, "RT": rt, "RW": rw, "Kelurahan": kelurahan, "IsLatih2": isLatih2 == 1,
+				},
+			}
+			return c.Render(http.StatusOK, "warga_edit.html", data)
 		}
 
 		// Update ke database dengan mensinkronkan status data_latih

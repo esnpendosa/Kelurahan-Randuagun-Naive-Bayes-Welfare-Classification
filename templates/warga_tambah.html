@@ -19,36 +19,36 @@ untuk kemudian disimpan ke database SQLite melalui endpoint POST /warga/simpan.
         <div class="form-row">
             <div class="form-group">
                 <label>NIK (Nomor Induk Kependudukan)</label>
-                <input type="text" name="nik" placeholder="Masukkan 16 digit NIK" required>
+                <input type="text" name="nik" placeholder="Masukkan 16 digit NIK" value="{{if .Warga}}{{.Warga.NIK}}{{end}}" required>
             </div>
             <div class="form-group">
                 <label>Nomor KK</label>
-                <input type="text" name="no_kk" placeholder="Masukkan Nomor Kartu Keluarga" required>
+                <input type="text" name="no_kk" placeholder="Masukkan Nomor Kartu Keluarga" value="{{if .Warga}}{{.Warga.NoKK}}{{end}}" required>
             </div>
         </div>
 
         <div class="form-group">
             <label>Nama Lengkap (Kepala Keluarga)</label>
-            <input type="text" name="nama" placeholder="Masukkan nama lengkap" required>
+            <input type="text" name="nama" placeholder="Masukkan nama lengkap" value="{{if .Warga}}{{.Warga.NamaKK}}{{end}}" required>
         </div>
 
         <div class="form-group">
             <label>Alamat</label>
-            <input type="text" name="alamat" placeholder="Masukkan alamat jalan/gang" required>
+            <input type="text" name="alamat" placeholder="Masukkan alamat jalan/gang" value="{{if .Warga}}{{.Warga.Alamat}}{{end}}" required>
         </div>
 
         <div class="grid" style="grid-template-columns: 1fr 1fr 2fr;">
             <div class="form-group">
                 <label>RT</label>
-                <input type="text" name="rt" placeholder="000" required>
+                <input type="text" name="rt" placeholder="000" value="{{if .Warga}}{{.Warga.RT}}{{end}}" required>
             </div>
             <div class="form-group">
                 <label>RW</label>
-                <input type="text" name="rw" placeholder="000" required>
+                <input type="text" name="rw" placeholder="000" value="{{if .Warga}}{{.Warga.RW}}{{end}}" required>
             </div>
             <div class="form-group">
                 <label>Kelurahan</label>
-                <input type="text" name="kelurahan" placeholder="Nama Kelurahan" required>
+                <input type="text" name="kelurahan" placeholder="Nama Kelurahan" value="{{if .Warga}}{{.Warga.Kelurahan}}{{end}}" required>
             </div>
         </div>
 
@@ -56,11 +56,11 @@ untuk kemudian disimpan ke database SQLite melalui endpoint POST /warga/simpan.
             <label>Peran dalam Evaluasi Model (Dataset 2)</label>
             <div style="display: flex; gap: 20px; margin-top: 8px;">
                 <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <input type="radio" name="data_latih_2" value="0" checked style="width: auto;">
+                    <input type="radio" name="data_latih_2" value="0" {{if .Warga}}{{if not .Warga.IsLatih2}}checked{{end}}{{else}}checked{{end}} style="width: auto;">
                     Sebagai Data Uji (Testing)
                 </label>
                 <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                    <input type="radio" name="data_latih_2" value="1" style="width: auto;">
+                    <input type="radio" name="data_latih_2" value="1" {{if .Warga}}{{if .Warga.IsLatih2}}checked{{end}}{{end}} style="width: auto;">
                     Sebagai Data Latih (Training)
                 </label>
             </div>
