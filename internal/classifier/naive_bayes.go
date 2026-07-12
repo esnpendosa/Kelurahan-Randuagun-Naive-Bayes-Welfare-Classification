@@ -1,6 +1,9 @@
 package classifier // Paket classifier untuk menangani logika klasifikasi
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 
 
@@ -176,11 +179,16 @@ func HitungPeluangSiswa(raw float64) float64 {
 	if raw <= 0 {
 		return 0
 	}
-	str := fmt.Sprintf("%e", raw)
+	str := fmt.Sprintf("%e", raw) // e.g. "2.599988e-10"
+	parts := strings.Split(strings.ToLower(str), "e")
+	if len(parts) != 2 {
+		return raw
+	}
 	var significand float64
 	var exponent int
-	_, err := fmt.Sscanf(str, "%fe%d", &significand, &exponent)
-	if err != nil {
+	_, err1 := fmt.Sscanf(parts[0], "%f", &significand)
+	_, err2 := fmt.Sscanf(parts[1], "%d", &exponent)
+	if err1 != nil || err2 != nil {
 		return raw
 	}
 	if exponent < 0 {
