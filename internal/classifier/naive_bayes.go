@@ -201,12 +201,12 @@ func HitungPeluangSiswa(raw float64) float64 {
 	return val
 }
 
-// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi secara deterministik menggunakan logika eksponen terbalik siswa
+// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi secara deterministik menggunakan perbandingan float64 standar
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
 	var kelasTerbaik KelasKesejahteraan = 1 // default
 	var peluangMaks float64 = -1.0          // Mulai dari -1.0 agar kelas dengan peluang 0 bisa terpilih jika semuanya 0
 	for _, c := range nb.SemuaKelas {
-		p := HitungPeluangSiswa(peluang[c])
+		p := peluang[c]
 		if p > peluangMaks {
 			peluangMaks = p
 			kelasTerbaik = c

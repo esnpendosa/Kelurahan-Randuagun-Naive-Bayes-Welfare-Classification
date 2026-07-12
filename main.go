@@ -663,23 +663,18 @@ func main() {
 			namaKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 		}
 
-		// Hitung persentase: normalisasi menggunakan HitungPeluangSiswa() agar konsisten
-		// dengan logika AmbilKelasTerbaik — kelas dengan persentase tertinggi = kelas terprediksi.
-		// HitungPeluangSiswa membalik eksponen negatif sehingga nilai terkecil jadi terbesar,
-		// dan setelah dinormalisasi, kelas dengan probabilitas asli terbesar mendapat persentase tertinggi.
-		var sumTransformed float64
+		// Hitung persentase: normalisasi menggunakan nilai probabilitas raw asli (Standard Math)
+		var sumRaw float64
 		for _, k := range modelNB.SemuaKelas {
-			sumTransformed += classifier.HitungPeluangSiswa(petaPeluang[k])
+			sumRaw += petaPeluang[k]
 		}
 
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			rawVal := petaPeluang[k]
-			transformed := classifier.HitungPeluangSiswa(rawVal)
-			// Persentase proporsional terhadap total nilai transformed
 			pct := 0.0
-			if sumTransformed > 0 {
-				pct = transformed / sumTransformed * 100
+			if sumRaw > 0 {
+				pct = rawVal / sumRaw * 100
 			}
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
 				"Label":   classifier.DaftarNamaKelas[k],
