@@ -143,7 +143,7 @@ func main() {
 	}
 
 	// Daftar halaman yang akan dikompilasi bersama layout base.html
-	halaman := []string{"index.html", "warga.html", "warga_tambah.html", "warga_edit.html", "klasifikasi.html", "hasil.html", "training.html", "laporan.html", "users.html", "users_edit.html"}
+	halaman := []string{"index.html", "warga.html", "warga_tambah.html", "warga_edit.html", "klasifikasi.html", "hasil.html", "training.html", "laporan.html", "users.html", "users_edit.html", "perbandingan.html"}
 	for _, hal := range halaman {
 		// Menggabungkan base.html dengan file konten spesifik dari embedded FS
 		perender.templates[hal] = template.Must(template.New(hal).Funcs(petaFungsi).ParseFS(fsSistem, "templates/base.html", "templates/"+hal))
@@ -614,8 +614,14 @@ func main() {
 			}
 		}
 
-		// Keterangan skripsi: jangan update warga.label_kelas saat klasifikasi agar data aktual (sebelum klasifikasi) tetap utuh untuk training & evaluasi.
-		// dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", prediksiKelas, idWarga)
+		// Update label_kelas untuk warga yang belum punya label (warga baru)
+		// Warga data training sudah punya label aktual yang tidak boleh diubah
+		var labelLama string
+		dbSistem.QueryRow("SELECT COALESCE(label_kelas, '') FROM warga WHERE id = ?", idWarga).Scan(&labelLama)
+		if labelLama == "" || labelLama == "Belum Diklasifikasi" {
+			// Hanya update jika belum ada label (warga baru yang baru pertama kali diklasifikasi)
+			dbSistem.Exec("UPDATE warga SET label_kelas = ? WHERE id = ?", prediksiKelas, idWarga)
+		}
 
 		// Simpan hasil klasifikasi ke database
 		peluangJSON, _ := json.Marshal(peluang)
@@ -683,10 +689,16 @@ func main() {
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			rawVal := petaPeluang[k]
+			// Hitung persentase untuk progress bar (normalisasi 0-100%)
+			pct := 0.0
+			if sumVal > 0 {
+				pct = rawVal / sumVal * 100
+			}
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
-				"Label": classifier.DaftarNamaKelas[k],
-				"Value": FormatScientific(rawVal),
-				"IsMax": classifier.DaftarNamaKelas[k] == namaKelas,
+				"Label":   classifier.DaftarNamaKelas[k],
+				"Value":   FormatScientific(rawVal),
+				"Percent": fmt.Sprintf("%.4f", pct),
+				"IsMax":   classifier.DaftarNamaKelas[k] == namaKelas,
 			})
 		}
 
@@ -755,14 +767,14 @@ func main() {
 		}
 
 		// Semua warga untuk tab dinamis (menggunakan data_latih_2)
-		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, label_kelas FROM warga ORDER BY id ASC")
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, COALESCE(label_kelas, '') FROM warga ORDER BY id ASC")
 		defer rows2.Close()
 		var semuaWarga []map[string]interface{}
 		for rows2.Next() {
 			var id, isLatih2 int; var nik, nama, labelKelas string
 			rows2.Scan(&id, &nik, &nama, &isLatih2, &labelKelas)
 			if labelKelas == "" {
-				labelKelas = "-"
+				labelKelas = "Belum Diklasifikasi"
 			}
 			semuaWarga = append(semuaWarga, map[string]interface{}{
 				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih2==1, "Kelas":labelKelas,
@@ -956,14 +968,14 @@ func main() {
 		}
 
 		// Semua warga tab dinamis (menggunakan data_latih_2)
-		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, label_kelas FROM warga ORDER BY id ASC")
+		rows2, _ := dbSistem.Query("SELECT id, nik, nama_lengkap, data_latih_2, COALESCE(label_kelas, '') FROM warga ORDER BY id ASC")
 		defer rows2.Close()
 		var semuaWarga []map[string]interface{}
 		for rows2.Next() {
 			var id, isLatih2 int; var nik, nama, labelKelas string
 			rows2.Scan(&id, &nik, &nama, &isLatih2, &labelKelas)
 			if labelKelas == "" {
-				labelKelas = "-"
+				labelKelas = "Belum Diklasifikasi"
 			}
 			semuaWarga = append(semuaWarga, map[string]interface{}{
 				"ID":fmt.Sprintf("%d",id), "NIK":nik, "NamaKK":nama, "IsTraining":isLatih2==1, "Kelas":labelKelas,
@@ -1072,42 +1084,28 @@ func main() {
 		for rows.Next() {
 			var nik, nama, alamat, kelas, tgl string
 			rows.Scan(&nik, &nama, &alamat, &kelas, &tgl)
-			
-			// Ambil format tanggal saja
-			if len(tgl) > 10 {
-				tgl = tgl[:10]
-			}
-			
+			if len(tgl) > 10 { tgl = tgl[:10] }
 			rekap = append(rekap, map[string]interface{}{
-				"NIK":       nik,
-				"NamaKK":    nama,
-				"Alamat":    alamat,
-				"ClassName": kelas,
-				"Status":    kelas,
-				"Date":      tgl,
+				"NIK": nik, "NamaKK": nama, "Alamat": alamat,
+				"ClassName": kelas, "Status": kelas, "Date": tgl,
 			})
 		}
 
 		// Hitung distribusi per kategori
-		var distribusi []map[string]interface{}
 		urutan := []string{"Sangat Miskin","Miskin","Hampir Miskin","Rentan Miskin","Pas-pasan","Menengah ke Atas"}
 		hitungPerKelas := make(map[string]int)
-		for _, r := range rekap {
-			hitungPerKelas[r["ClassName"].(string)]++
-		}
+		for _, r := range rekap { hitungPerKelas[r["ClassName"].(string)]++ }
+		var distribusi []map[string]interface{}
 		for _, k := range urutan {
-			distribusi = append(distribusi, map[string]interface{}{
-				"Label": k,
-				"Count": hitungPerKelas[k],
-			})
+			distribusi = append(distribusi, map[string]interface{}{"Label": k, "Count": hitungPerKelas[k]})
 		}
 
 		data := map[string]interface{}{
-			"User":         ambilDataPengguna(c),
-			"Results":      rekap,
-			"Distribusi":   distribusi,
-			"FilterKelas":  filterKelas,
-			"TotalWarga":   len(rekap),
+			"User":        ambilDataPengguna(c),
+			"Results":     rekap,
+			"Distribusi":  distribusi,
+			"FilterKelas": filterKelas,
+			"TotalWarga":  len(rekap),
 		}
 		return c.Render(http.StatusOK, "laporan.html", data)
 	}, middlewareAutentikasi)
@@ -1117,6 +1115,18 @@ func main() {
 		data := map[string]interface{}{"User": ambilDataPengguna(c)}
 		return c.Render(http.StatusOK, "warga_tambah.html", data)
 	}, middlewareAutentikasi, middlewarePeran("Admin"))
+
+	// Halaman Perbandingan Evaluasi 2 Skenario (Revisian Bu Umi)
+	e.GET("/perbandingan", func(c echo.Context) error {
+		eval1 := hitungEvaluasiSplit(dbSistem, 1, namaFitur)
+		eval2 := hitungEvaluasiSplit(dbSistem, 2, namaFitur)
+		data := map[string]interface{}{
+			"User":  ambilDataPengguna(c),
+			"Eval1": eval1,
+			"Eval2": eval2,
+		}
+		return c.Render(http.StatusOK, "perbandingan.html", data)
+	}, middlewareAutentikasi)
 
 	// Simpan Warga Baru (Proses)
 	e.POST("/warga/simpan", func(c echo.Context) error {
@@ -1132,6 +1142,18 @@ func main() {
 		isLatih2 := 0
 		if peran == "1" {
 			isLatih2 = 1
+		}
+
+		// Cek apakah NIK sudah terdaftar (Revisian Bu Sofi)
+		var existingID int
+		err := dbSistem.QueryRow("SELECT id FROM warga WHERE nik = ?", nik).Scan(&existingID)
+		if err == nil && existingID > 0 {
+			// NIK sudah terdaftar - kembalikan ke form dengan pesan error
+			data := map[string]interface{}{
+				"User":  ambilDataPengguna(c),
+				"Error": fmt.Sprintf("NIK %s sudah terdaftar dalam sistem. Setiap warga hanya dapat didaftarkan satu kali.", nik),
+			}
+			return c.Render(http.StatusOK, "warga_tambah.html", data)
 		}
 
 		sess, _ := session.Get("session", c)
@@ -1934,4 +1956,79 @@ func FormatScientific(val float64) string {
 	}
 	significand = strings.ReplaceAll(significand, ".", ",")
 	return significand + "E" + exponent
+}
+
+// HasilEvaluasi menyimpan metrik evaluasi model untuk satu skenario/split
+type HasilEvaluasi struct {
+	Akurasi   float64
+	Precision float64
+	Recall    float64
+	F1Score   float64
+	JmlLatih  int
+	JmlUji    int
+}
+
+// hitungEvaluasiSplit melatih model dengan data split tertentu dan menghitung metrik evaluasinya
+func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilEvaluasi {
+	dataLatih, errLatih := db.AmbilDataLatihSplit(dbSistem, split)
+	dataUji, errUji := db.AmbilDataUjiSplit(dbSistem, split)
+
+	hasil := HasilEvaluasi{JmlLatih: len(dataLatih), JmlUji: len(dataUji)}
+
+	if errLatih != nil || errUji != nil || len(dataLatih) < 2 || len(dataUji) == 0 {
+		return hasil
+	}
+
+	// Latih model untuk split ini
+	m := classifier.BuatModelBaru()
+	m.DaftarFitur = namaFitur
+	var in []map[string]string
+	var tg []classifier.KelasKesejahteraan
+	for _, dl := range dataLatih {
+		in = append(in, dl.Indikator)
+		tg = append(tg, classifier.KelasKesejahteraan(dl.Kelas))
+	}
+	m.LatihModel(in, tg)
+
+	// Evaluasi dengan data uji
+	benar, total := 0, 0
+	matriks := make(map[classifier.KelasKesejahteraan]map[classifier.KelasKesejahteraan]int)
+	for _, k1 := range m.SemuaKelas {
+		matriks[k1] = make(map[classifier.KelasKesejahteraan]int)
+	}
+	for _, du := range dataUji {
+		p := m.Prediksi(du.Indikator)
+		pred := m.AmbilKelasTerbaik(p)
+		aktual := classifier.KelasKesejahteraan(du.Kelas)
+		if matriks[aktual] == nil {
+			matriks[aktual] = make(map[classifier.KelasKesejahteraan]int)
+		}
+		matriks[aktual][pred]++
+		if aktual == pred {
+			benar++
+		}
+		total++
+	}
+
+	if total > 0 {
+		hasil.Akurasi = float64(benar) / float64(total) * 100
+	}
+
+	var totP, totR, totF1, cnt float64
+	for _, k := range m.SemuaKelas {
+		tp := float64(matriks[k][k])
+		var fp, fn float64
+		for _, ac := range m.SemuaKelas { if ac != k { fp += float64(matriks[ac][k]) } }
+		for _, pc := range m.SemuaKelas { if pc != k { fn += float64(matriks[k][pc]) } }
+		pr := 0.0; if tp+fp > 0 { pr = tp / (tp + fp) }
+		rc := 0.0; if tp+fn > 0 { rc = tp / (tp + fn) }
+		f1 := 0.0; if pr+rc > 0 { f1 = 2 * pr * rc / (pr + rc) }
+		totP += pr; totR += rc; totF1 += f1; cnt++
+	}
+	if cnt == 0 { cnt = 1 }
+	hasil.Precision = totP / cnt * 100
+	hasil.Recall = totR / cnt * 100
+	hasil.F1Score = totF1 / cnt * 100
+
+	return hasil
 }

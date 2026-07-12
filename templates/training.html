@@ -555,7 +555,7 @@
 
 <!-- ==================== TAB 5: MANAJEMEN PERAN ==================== -->
 <div id="tab-peran" class="tab-pane">
-    <div class="control-row">
+    <div class="control-row" style="margin-bottom: 16px;">
         <div>
             <h3 style="font-size:0.875rem; font-weight:600;">Manajemen Peran Warga (Split Dinamis 2)</h3>
             <p style="font-size:0.75rem; color:var(--text-3); margin-top:2px;">
@@ -569,6 +569,28 @@
                 <option value="TRAINING">Hanya Training</option>
                 <option value="UJI">Hanya Uji</option>
             </select>
+        </div>
+    </div>
+
+    <!-- Panel Informasi Jumlah Data Latih dan Uji (Revisian Bu Sofi) -->
+    <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-lg); padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm);">
+            <div style="background: var(--blue); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; box-shadow: var(--shadow-sm);">
+                <span id="count-training-2">{{.Stats.TotalTraining2}}</span>
+            </div>
+            <div>
+                <span style="font-size: 0.72rem; color: var(--blue-dark); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Jumlah Data Latih</span>
+                <span style="font-size: 0.78rem; color: var(--text-2); font-weight: 500;">Terpilih sebagai Training</span>
+            </div>
+        </div>
+        <div style="flex: 1; min-width: 200px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--radius-lg); padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm);">
+            <div style="background: #b45309; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; box-shadow: var(--shadow-sm);">
+                <span id="count-uji-2">{{.Stats.TotalTesting2}}</span>
+            </div>
+            <div>
+                <span style="font-size: 0.72rem; color: #78350f; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: block;">Jumlah Data Uji</span>
+                <span style="font-size: 0.78rem; color: var(--text-2); font-weight: 500;">Terpilih sebagai Uji</span>
+            </div>
         </div>
     </div>
 
@@ -591,17 +613,21 @@
                     <td style="font-family:monospace;">{{$w.NIK}}</td>
                     <td style="font-weight:600; color:var(--text-1);">{{$w.NamaKK}}</td>
                     <td style="text-align:center;">
+                        {{if eq $w.Kelas "Belum Diklasifikasi"}}
+                        <span class="badge badge-secondary" style="font-style:italic; font-size:0.68rem;">Belum Diklasifikasi</span>
+                        {{else}}
                         <span class="badge badge-{{badgeClass $w.Kelas}}">{{$w.Kelas}}</span>
+                        {{end}}
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" class="role-badge-cell">
                         {{if $w.IsTraining}}
                         <span class="badge badge-training">Training</span>
                         {{else}}
                         <span class="badge badge-uji">Uji</span>
                         {{end}}
                     </td>
-                    <td style="text-align:center;">
-                        <form action="/warga/set-peran" method="POST" style="margin:0;">
+                    <td style="text-align:center;" class="role-action-cell">
+                        <form action="/warga/set-peran" method="POST" style="margin:0;" class="form-set-peran">
                             <input type="hidden" name="id" value="{{$w.ID}}">
                             {{if $w.IsTraining}}
                             <input type="hidden" name="peran" value="uji">
@@ -725,6 +751,69 @@
                 switchTab(savedTab);
             }
         }
+
+        // Intercept form submission for dynamic role updates (Revisian Bu Sofi)
+        document.querySelectorAll('.form-set-peran').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const action = this.getAttribute('action');
+                const row = this.closest('tr');
+                const targetPeran = formData.get('peran'); // 'uji' or 'latih'
+
+                fetch(action, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        // Update counters
+                        const countTrainingEl = document.getElementById('count-training-2');
+                        const countUjiEl = document.getElementById('count-uji-2');
+                        let countTraining = parseInt(countTrainingEl.textContent);
+                        let countUji = parseInt(countUjiEl.textContent);
+
+                        if (targetPeran === 'uji') {
+                            // Training -> Uji
+                            countTraining = Math.max(0, countTraining - 1);
+                            countUji = countUji + 1;
+                            
+                            // Update badge
+                            row.querySelector('.role-badge-cell').innerHTML = '<span class="badge badge-uji">Uji</span>';
+                            
+                            // Update form
+                            this.querySelector('input[name="peran"]').value = 'latih';
+                            this.querySelector('button[type="submit"]').textContent = 'Jadikan Training';
+                            
+                            // Update row data attributes
+                            row.setAttribute('data-role', 'UJI');
+                        } else {
+                            // Uji -> Training
+                            countTraining = countTraining + 1;
+                            countUji = Math.max(0, countUji - 1);
+                            
+                            // Update badge
+                            row.querySelector('.role-badge-cell').innerHTML = '<span class="badge badge-training">Training</span>';
+                            
+                            // Update form
+                            this.querySelector('input[name="peran"]').value = 'uji';
+                            this.querySelector('button[type="submit"]').textContent = 'Jadikan Uji';
+                            
+                            // Update row data attributes
+                            row.setAttribute('data-role', 'TRAINING');
+                        }
+
+                        // Update UI text content
+                        countTrainingEl.textContent = countTraining;
+                        countUjiEl.textContent = countUji;
+                    } else {
+                        alert('Gagal memperbarui peran warga.');
+                    }
+                }).catch(err => {
+                    console.error(err);
+                    alert('Terjadi kesalahan koneksi.');
+                });
+            });
+        });
     });
 </script>
 {{end}}

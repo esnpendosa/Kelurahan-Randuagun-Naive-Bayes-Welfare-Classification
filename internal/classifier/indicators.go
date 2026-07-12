@@ -207,3 +207,6 @@ func AmbilDaftarIndikator() []Indikator {
 		}},
 	}
 }
+
+
+
