@@ -55,6 +55,19 @@ Data yang sudah diubah akan diperbarui di database SQLite melalui endpoint POST 
         </div>
 
         <div class="form-group" style="margin-top: 16px;">
+            <label for="kelas_aktual">Kelas Aktual (Wajib untuk Evaluasi)</label>
+            <select name="kelas_aktual" id="kelas_aktual" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background-color: var(--surface); color: var(--text-1);">
+                <option value="" disabled selected>-- Pilih Kelas Kesejahteraan --</option>
+                <option value="Sangat Miskin" {{if .Warga}}{{if eq .Warga.Kelas "Sangat Miskin"}}selected{{end}}{{end}}>Sangat Miskin (Kelas 1)</option>
+                <option value="Miskin" {{if .Warga}}{{if eq .Warga.Kelas "Miskin"}}selected{{end}}{{end}}>Miskin (Kelas 2)</option>
+                <option value="Hampir Miskin" {{if .Warga}}{{if eq .Warga.Kelas "Hampir Miskin"}}selected{{end}}{{end}}>Hampir Miskin (Kelas 3)</option>
+                <option value="Rentan Miskin" {{if .Warga}}{{if eq .Warga.Kelas "Rentan Miskin"}}selected{{end}}{{end}}>Rentan Miskin (Kelas 4)</option>
+                <option value="Pas-pasan" {{if .Warga}}{{if or (eq .Warga.Kelas "Pas-pasan") (eq .Warga.Kelas "Pas-Pasan")}}selected{{end}}{{end}}>Pas-pasan (Kelas 5)</option>
+                <option value="Menengah ke Atas" {{if .Warga}}{{if eq .Warga.Kelas "Menengah ke Atas"}}selected{{end}}{{end}}>Menengah ke Atas (Kelas 6)</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
             <label>Peran dalam Evaluasi Model (Dataset 2)</label>
             <div style="display: flex; gap: 20px; margin-top: 8px;">
                 <label style="font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 8px;">

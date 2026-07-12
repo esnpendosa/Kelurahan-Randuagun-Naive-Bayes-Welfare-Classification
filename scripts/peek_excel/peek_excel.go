@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	f, err := excelize.OpenFile("data skripsi/klasifikasi naive bayes.xlsx")
+	f, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}

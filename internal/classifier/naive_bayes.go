@@ -169,11 +169,12 @@ func (nb *KlasifikasiNaiveBayes) PrediksiLaplace(input map[string]string, data [
 	return hasilPeluang
 }
 
-// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi
+// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi secara deterministik
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
 	var kelasTerbaik KelasKesejahteraan = 1 // default
 	var peluangMaks float64 = -1.0          // Mulai dari -1.0 agar kelas dengan peluang 0 bisa terpilih jika semuanya 0
-	for c, p := range peluang {
+	for _, c := range nb.SemuaKelas {
+		p := peluang[c]
 		if p > peluangMaks {
 			peluangMaks = p
 			kelasTerbaik = c
