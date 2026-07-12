@@ -663,22 +663,23 @@ func main() {
 			namaKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 		}
 
-		// Hitung persentase: normalisasi proporsional dari nilai raw probabilitas
-		// (kelas dengan nilai terbesar mendapat persentase tertinggi)
-		// Karena nilai sangat kecil (misal 6.56E-11), kita normalisasi langsung.
-		// Jika semua nilai 0, persentase semua 0.
-		var sumRaw float64
+		// Hitung persentase: normalisasi menggunakan HitungPeluangSiswa() agar konsisten
+		// dengan logika AmbilKelasTerbaik — kelas dengan persentase tertinggi = kelas terprediksi.
+		// HitungPeluangSiswa membalik eksponen negatif sehingga nilai terkecil jadi terbesar,
+		// dan setelah dinormalisasi, kelas dengan probabilitas asli terbesar mendapat persentase tertinggi.
+		var sumTransformed float64
 		for _, k := range modelNB.SemuaKelas {
-			sumRaw += petaPeluang[k]
+			sumTransformed += classifier.HitungPeluangSiswa(petaPeluang[k])
 		}
 
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			rawVal := petaPeluang[k]
-			// Persentase proporsional terhadap total probabilitas
+			transformed := classifier.HitungPeluangSiswa(rawVal)
+			// Persentase proporsional terhadap total nilai transformed
 			pct := 0.0
-			if sumRaw > 0 {
-				pct = rawVal / sumRaw * 100
+			if sumTransformed > 0 {
+				pct = transformed / sumTransformed * 100
 			}
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
 				"Label":   classifier.DaftarNamaKelas[k],
@@ -2093,7 +2094,7 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 		hasil.Akurasi = float64(benar) / float64(total) * 100
 	}
 
-	var totP, totR, totF1, cnt float64
+	var totP, totR, cnt float64
 	for _, k := range m.SemuaKelas {
 		tp := float64(matriks[k][k])
 		var fp, fn float64
@@ -2101,13 +2102,16 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 		for _, pc := range m.SemuaKelas { if pc != k { fn += float64(matriks[k][pc]) } }
 		pr := 0.0; if tp+fp > 0 { pr = tp / (tp + fp) }
 		rc := 0.0; if tp+fn > 0 { rc = tp / (tp + fn) }
-		f1 := 0.0; if pr+rc > 0 { f1 = 2 * pr * rc / (pr + rc) }
-		totP += pr; totR += rc; totF1 += f1; cnt++
+		totP += pr; totR += rc; cnt++
 	}
 	if cnt == 0 { cnt = 1 }
-	hasil.Precision = totP / cnt * 100
-	hasil.Recall = totR / cnt * 100
-	hasil.F1Score = totF1 / cnt * 100
+	macroP := totP / cnt
+	macroR := totR / cnt
+	macroF1 := 0.0
+	if macroP+macroR > 0 { macroF1 = 2 * macroP * macroR / (macroP + macroR) }
+	hasil.Precision = macroP * 100
+	hasil.Recall = macroR * 100
+	hasil.F1Score = macroF1 * 100
 
 	// Suppress unused variable warnings
 	_ = rowTotals
