@@ -201,12 +201,30 @@ func HitungPeluangSiswa(raw float64) float64 {
 	return val
 }
 
-// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi secara deterministik menggunakan perbandingan float64 standar
+// AmbilSignificand mengambil angka sebelum 'e' pada format scientific notation untuk penyelarasan dengan Excel skripsi
+func AmbilSignificand(raw float64) float64 {
+	if raw <= 0 {
+		return 0
+	}
+	str := fmt.Sprintf("%e", raw)
+	parts := strings.Split(strings.ToLower(str), "e")
+	if len(parts) != 2 {
+		return raw
+	}
+	var significand float64
+	_, err := fmt.Sscanf(parts[0], "%f", &significand)
+	if err != nil {
+		return raw
+	}
+	return significand
+}
+
+// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi berdasarkan nilai significand (angka sebelum E) sesuai format Excel skripsi
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
 	var kelasTerbaik KelasKesejahteraan = 1 // default
 	var peluangMaks float64 = -1.0          // Mulai dari -1.0 agar kelas dengan peluang 0 bisa terpilih jika semuanya 0
 	for _, c := range nb.SemuaKelas {
-		p := peluang[c]
+		p := AmbilSignificand(peluang[c])
 		if p > peluangMaks {
 			peluangMaks = p
 			kelasTerbaik = c

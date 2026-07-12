@@ -62,17 +62,30 @@ Dilengkapi tombol cetak untuk mencetak laporan klasifikasi individu warga terseb
         <h4 style="margin-bottom: 16px; border-bottom: 2px solid var(--border-light); padding-bottom: 8px; color: var(--text-1); font-size: 0.95rem;">Nilai Probabilitas Posterior Kelas:</h4>
         <div style="display: flex; flex-direction: column; gap: 12px;">
             {{range .Probabilities}}
-            <div style="padding: 14px 16px; border-radius: var(--radius-lg); {{if .IsMax}}background: var(--blue-light); font-weight: bold; border: 1.5px solid var(--blue);{{else}}border: 1px solid var(--border); background: white;{{end}}">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-2){{end}}; font-size: 0.95rem; font-weight: {{if .IsMax}}700{{else}}500{{end}};">
-                        {{.Label}}
-                        {{if .IsMax}}<span class="badge badge-training" style="margin-left: 8px; font-size: 0.65rem; padding: 1px 6px;">Prediksi Terbaik</span>{{end}}
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-1){{end}};">P(C|X): {{.Value}}</span>
+                {{if .IsMax}}
+                <div style="padding: 14px 16px; border-radius: var(--radius-lg); background: var(--blue-light); font-weight: bold; border: 1.5px solid var(--blue);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="color: var(--blue-dark); font-size: 0.95rem; font-weight: 700;">
+                            {{.Label}}
+                            <span class="badge badge-training" style="margin-left: 8px; font-size: 0.65rem; padding: 1px 6px;">Prediksi Terbaik</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: var(--blue-dark);">P(C|X): {{.Value}}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+                {{else}}
+                <div style="padding: 14px 16px; border-radius: var(--radius-lg); border: 1px solid var(--border); background: white;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="color: var(--text-2); font-size: 0.95rem; font-weight: 500;">
+                            {{.Label}}
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: var(--text-1);">P(C|X): {{.Value}}</span>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
             {{end}}
         </div>
     </div>
