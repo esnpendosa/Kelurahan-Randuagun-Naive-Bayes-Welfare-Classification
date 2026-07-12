@@ -56,26 +56,21 @@ Dilengkapi tombol cetak untuk mencetak laporan klasifikasi individu warga terseb
     <div style="text-align: left; margin-top: 24px;">
         <div style="background: var(--blue-light); border: 1px solid var(--blue-border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 24px; font-size: 0.8125rem; color: var(--blue-dark); line-height: 1.5;">
             <strong>Keterangan Nilai Probabilitas (Naive Bayes):</strong><br>
-            Angka di bawah ini merupakan <strong>nilai probabilitas posterior</strong> untuk masing-masing kelas kesejahteraan. Persentase (%) dihitung dengan menormalisasi nilai probabilitas agar total bernilai 100%. Kelas dengan <strong>persentase tertinggi (warna hijau tebal)</strong> terpilih sebagai hasil prediksi akhir.
+            Keputusan hasil prediksi akhir diambil secara deterministik berdasarkan <strong>nilai probabilitas posterior tertinggi (P(C|X))</strong> yang diperoleh dari perhitungan model Naive Bayes. Kelas dengan status <strong>Prediksi Terbaik</strong> merupakan hasil klasifikasi akhir warga tersebut.
         </div>
 
-        <h4 style="margin-bottom: 16px; border-bottom: 2px solid var(--border-light); padding-bottom: 8px; color: var(--text-1); font-size: 0.95rem;">Distribusi Probabilitas Kelas:</h4>
+        <h4 style="margin-bottom: 16px; border-bottom: 2px solid var(--border-light); padding-bottom: 8px; color: var(--text-1); font-size: 0.95rem;">Nilai Probabilitas Posterior Kelas:</h4>
         <div style="display: flex; flex-direction: column; gap: 12px;">
             {{range .Probabilities}}
             <div style="padding: 14px 16px; border-radius: var(--radius-lg); {{if .IsMax}}background: var(--blue-light); font-weight: bold; border: 1.5px solid var(--blue);{{else}}border: 1px solid var(--border); background: white;{{end}}">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-2){{end}}; font-size: 0.9rem; font-weight: {{if .IsMax}}700{{else}}500{{end}};">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-2){{end}}; font-size: 0.95rem; font-weight: {{if .IsMax}}700{{else}}500{{end}};">
                         {{.Label}}
                         {{if .IsMax}}<span class="badge badge-training" style="margin-left: 8px; font-size: 0.65rem; padding: 1px 6px;">Prediksi Terbaik</span>{{end}}
                     </div>
                     <div style="text-align: right;">
-                        <span style="font-size: 1.15rem; font-weight: 800; color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-1){{end}};">{{.Percent}}%</span>
-                        <span style="display: block; font-family: monospace; font-size: 0.72rem; color: var(--text-3); margin-top: 1px;">P(C|X): {{.Value}}</span>
+                        <span style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: {{if .IsMax}}var(--blue-dark){{else}}var(--text-1){{end}};">P(C|X): {{.Value}}</span>
                     </div>
-                </div>
-                <!-- Progress Bar -->
-                <div style="width: 100%; background-color: var(--border-light); height: 6px; border-radius: 3px; overflow: hidden;">
-                    <div style="width: {{.Percent}}%; background-color: {{if .IsMax}}var(--blue){{else}}var(--text-4){{end}}; height: 100%; border-radius: 3px;"></div>
                 </div>
             </div>
             {{end}}
