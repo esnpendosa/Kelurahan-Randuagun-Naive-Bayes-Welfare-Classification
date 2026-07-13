@@ -562,22 +562,22 @@ func main() {
 			}
 
 			// Tentukan sheet berdasarkan peran warga:
-			// - data_latih=0 (data uji split 1) → Evaluasi 1
-			// - data_latih_2=0 (data uji split 2) → coba Evaluasi 2 dulu, fallback Evaluasi 1
-			// - data_latih=1 (training split 1) → coba Evaluasi 1 (bisa juga ada di evaluasi)
-			if dataLatihVal == 0 && dataLatih2Val == 1 {
-				// Hanya data uji split 1, bukan split 2 → cari di Evaluasi 1 saja
-				ambilDariSheet("Evaluasi 1")
-			} else if dataLatih2Val == 0 && dataLatihVal == 1 {
-				// Hanya data uji split 2, bukan split 1 → cari di Evaluasi 2 saja
-				ambilDariSheet("Evaluasi 2")
-			} else if dataLatihVal == 0 && dataLatih2Val == 0 {
-				// Data uji di kedua split → coba Evaluasi 2 dulu (lebih spesifik), lalu Evaluasi 1
+			// - data_latih=0 (data uji split 1) → Evaluasi 1 (model terbaik)
+			// - data_latih=1 DAN data_latih_2=0 (hanya data uji split 2) → Evaluasi 2
+			// - data_latih=0 DAN data_latih_2=0 (data uji di kedua split, warga bersama) → Evaluasi 1 (model terbaik)
+			// - data_latih=1 DAN data_latih_2=1 (training di kedua split) → coba Evaluasi 1 dulu
+			if dataLatihVal == 0 {
+				// Data uji split 1 (termasuk warga bersama) → selalu pakai Evaluasi 1 (model terbaik)
+				if !ambilDariSheet("Evaluasi 1") {
+					ambilDariSheet("Evaluasi 2")
+				}
+			} else if dataLatih2Val == 0 {
+				// Hanya data uji split 2 (training split 1, uji split 2) → Evaluasi 2
 				if !ambilDariSheet("Evaluasi 2") {
 					ambilDariSheet("Evaluasi 1")
 				}
 			} else {
-				// Data training di salah satu/kedua split → coba Evaluasi 1, lalu Evaluasi 2
+				// Data training di kedua split → coba Evaluasi 1 dulu
 				if !ambilDariSheet("Evaluasi 1") {
 					ambilDariSheet("Evaluasi 2")
 				}
