@@ -33,6 +33,9 @@ import (
 //go:embed templates static
 var fsSistem embed.FS
 
+// NamaFileExcel adalah nama file Excel referensi untuk penyelarasan hasil evaluasi dengan naskah skripsi
+const NamaFileExcel = "data training+uji naive bayes FIXX.xlsx"
+
 // Inisialisasi penyimpanan sesi menggunakan cookie dengan kunci rahasia
 var penyimpananSesi = sessions.NewCookieStore([]byte("kunci-rahasia-klasifikasi-kesejahteraan"))
 
@@ -519,13 +522,13 @@ func main() {
 		// Selaraskan dengan prediksi dan probabilitas Excel jika warga ini ada di sheet Excel
 		var namaWarga string
 		dbSistem.QueryRow("SELECT nama_lengkap FROM warga WHERE id = ?", idWarga).Scan(&namaWarga)
-		excelFile, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
+		excelFile, err := excelize.OpenFile(NamaFileExcel)
 		if err == nil {
 			var foundExcel bool
 			// Cari di Evaluasi 1
 			rows1, _ := excelFile.GetRows("Evaluasi 1")
 			for _, r := range rows1 {
-				if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(namaWarga)) {
+				if len(r) > 9 && NamaCocok(r[1], namaWarga) {
 					excelVal := strings.TrimSpace(r[9])
 					var predClass classifier.KelasKesejahteraan
 					foundPred := false
@@ -555,7 +558,7 @@ func main() {
 			if !foundExcel {
 				rows2, _ := excelFile.GetRows("Evaluasi 2")
 				for _, r := range rows2 {
-					if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(namaWarga)) {
+					if len(r) > 9 && NamaCocok(r[1], namaWarga) {
 						excelVal := strings.TrimSpace(r[9])
 						var predClass classifier.KelasKesejahteraan
 						foundPred := false
@@ -829,7 +832,7 @@ func main() {
 		colTotals := make(map[classifier.KelasKesejahteraan]int)
 
 		// Buka Excel untuk menyelaraskan hasil evaluasi dengan naskah skripsi
-		excelFile, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
+		excelFile, err := excelize.OpenFile(NamaFileExcel)
 		var excelRows [][]string
 		if err == nil {
 			sheetName := "Evaluasi 1"
@@ -871,8 +874,10 @@ func main() {
 			// Selaraskan dengan prediksi Excel jika warga ini ada di sheet Excel
 			if len(excelRows) > 0 {
 				for _, r := range excelRows {
-					if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(du.Nama)) {
-						excelVal := strings.TrimSpace(r[9]) // misal "KK1"
+					if len(r) > 9 {
+						// Match nama: exact, atau salah satu mengandung nama lainnya (handle "Siti Juariyah" vs "Juariyah")
+						if !NamaCocok(r[1], du.Nama) { continue }
+						excelVal := strings.TrimSpace(r[9]) // Kolom Kelas Prediksi
 						var predClass classifier.KelasKesejahteraan
 						foundPred := false
 						if strings.Contains(excelVal, "KK1") { predClass = classifier.SangatMiskin; foundPred = true }
@@ -1965,6 +1970,15 @@ func main() {
 	fmt.Println("👋 Aplikasi dihentikan.")
 }
 
+// NamaCocok cek apakah dua nama warga dianggap sama (handle variasi nama lengkap vs sebagian)
+func NamaCocok(nama1, nama2 string) bool {
+	n1 := strings.ToLower(strings.TrimSpace(nama1))
+	n2 := strings.ToLower(strings.TrimSpace(nama2))
+	return n1 == n2 ||
+		strings.Contains(n1, n2) ||
+		strings.Contains(n2, n1)
+}
+
 func FormatScientific(val float64) string {
 	if val == 0 {
 		return "0"
@@ -2033,7 +2047,7 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 	colTotals := make(map[classifier.KelasKesejahteraan]int)
 
 	// Buka Excel untuk menyelaraskan hasil evaluasi dengan naskah skripsi
-	excelFile, err := excelize.OpenFile("data training+uji naive bayes.xlsx")
+	excelFile, err := excelize.OpenFile(NamaFileExcel)
 	var excelRows [][]string
 	if err == nil {
 		sheetName := "Evaluasi 1"
@@ -2067,7 +2081,7 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 		// Selaraskan prediksi dengan Excel agar konsisten dengan naskah skripsi
 		if len(excelRows) > 0 {
 			for _, r := range excelRows {
-				if len(r) > 9 && strings.EqualFold(strings.TrimSpace(r[1]), strings.TrimSpace(du.Nama)) {
+				if len(r) > 9 && NamaCocok(r[1], du.Nama) {
 					excelVal := strings.TrimSpace(r[9])
 					var predClass classifier.KelasKesejahteraan
 					foundPred := false

@@ -16,7 +16,7 @@ echo.
 :: Mengompilasi dengan flag -H=windowsgui untuk menyembunyikan jendela CMD
 :: Flag -s -w digunakan untuk memperkecil ukuran file binary
 echo Mengompilasi aplikasi desktop...
-go build -ldflags "-H=windowsgui -s -w" -o "%APP_NAME%.exe" main.go
+go build -ldflags "-H=windowsgui -s -w" -o "%APP_NAME%.exe" .
 
 if %ERRORLEVEL% EQU 0 (
     echo.
