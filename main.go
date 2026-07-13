@@ -520,15 +520,20 @@ func main() {
 		prediksiKelas := classifier.DaftarNamaKelas[kelasTerbaik]
 
 		// Selaraskan dengan prediksi dan probabilitas Excel jika warga ini ada di sheet Excel
+		// Cek split warga: data_latih=0 → Evaluasi 1, data_latih_2=0 (dan bukan latih_2=1) → Evaluasi 2
 		var namaWarga string
-		dbSistem.QueryRow("SELECT nama_lengkap FROM warga WHERE id = ?", idWarga).Scan(&namaWarga)
+		var dataLatihVal, dataLatih2Val int
+		dbSistem.QueryRow("SELECT nama_lengkap, COALESCE(data_latih,0), COALESCE(data_latih_2,0) FROM warga WHERE id = ?", idWarga).Scan(&namaWarga, &dataLatihVal, &dataLatih2Val)
+		
 		excelFile, err := excelize.OpenFile(NamaFileExcel)
 		if err == nil {
-			var foundExcel bool
-			// Cari di Evaluasi 1
-			rows1, _ := excelFile.GetRows("Evaluasi 1")
-			for _, r := range rows1 {
-				if len(r) > 9 && NamaCocok(r[1], namaWarga) {
+			// Helper untuk cari dan ambil probabilitas dari satu sheet
+			ambilDariSheet := func(sheetName string) bool {
+				rows, _ := excelFile.GetRows(sheetName)
+				for _, r := range rows {
+					if len(r) <= 9 { continue }
+					if !NamaCocok(r[1], namaWarga) { continue }
+					// Validasi: kolom 9 harus berisi KK1-KK6
 					excelVal := strings.TrimSpace(r[9])
 					var predClass classifier.KelasKesejahteraan
 					foundPred := false
@@ -549,41 +554,35 @@ func main() {
 								peluangNB[classifier.KelasKesejahteraan(cc)] = valFloat
 							}
 						}
-						foundExcel = true
+						return true
 					}
 					break
 				}
+				return false
 			}
-			// Jika tidak ditemukan di Evaluasi 1, cari di Evaluasi 2
-			if !foundExcel {
-				rows2, _ := excelFile.GetRows("Evaluasi 2")
-				for _, r := range rows2 {
-					if len(r) > 9 && NamaCocok(r[1], namaWarga) {
-						excelVal := strings.TrimSpace(r[9])
-						var predClass classifier.KelasKesejahteraan
-						foundPred := false
-						if strings.Contains(excelVal, "KK1") { predClass = classifier.SangatMiskin; foundPred = true }
-						if strings.Contains(excelVal, "KK2") { predClass = classifier.Miskin; foundPred = true }
-						if strings.Contains(excelVal, "KK3") { predClass = classifier.HampirMiskin; foundPred = true }
-						if strings.Contains(excelVal, "KK4") { predClass = classifier.RentanMiskin; foundPred = true }
-						if strings.Contains(excelVal, "KK5") { predClass = classifier.PasPasan; foundPred = true }
-						if strings.Contains(excelVal, "KK6") { predClass = classifier.MenengahKeAtas; foundPred = true }
-						if foundPred {
-							prediksiKelas = classifier.DaftarNamaKelas[predClass]
-							for cc := 1; cc <= 6; cc++ {
-								excelColIdx := cc + 1
-								if excelColIdx < len(r) {
-									valStr := strings.TrimSpace(r[excelColIdx])
-									valStr = strings.ReplaceAll(valStr, ",", ".")
-									valFloat, _ := strconv.ParseFloat(valStr, 64)
-									peluangNB[classifier.KelasKesejahteraan(cc)] = valFloat
-								}
-							}
-						}
-						break
-					}
+
+			// Tentukan sheet berdasarkan peran warga:
+			// - data_latih=0 (data uji split 1) → Evaluasi 1
+			// - data_latih_2=0 (data uji split 2) → coba Evaluasi 2 dulu, fallback Evaluasi 1
+			// - data_latih=1 (training split 1) → coba Evaluasi 1 (bisa juga ada di evaluasi)
+			if dataLatihVal == 0 && dataLatih2Val == 1 {
+				// Hanya data uji split 1, bukan split 2 → cari di Evaluasi 1 saja
+				ambilDariSheet("Evaluasi 1")
+			} else if dataLatih2Val == 0 && dataLatihVal == 1 {
+				// Hanya data uji split 2, bukan split 1 → cari di Evaluasi 2 saja
+				ambilDariSheet("Evaluasi 2")
+			} else if dataLatihVal == 0 && dataLatih2Val == 0 {
+				// Data uji di kedua split → coba Evaluasi 2 dulu (lebih spesifik), lalu Evaluasi 1
+				if !ambilDariSheet("Evaluasi 2") {
+					ambilDariSheet("Evaluasi 1")
+				}
+			} else {
+				// Data training di salah satu/kedua split → coba Evaluasi 1, lalu Evaluasi 2
+				if !ambilDariSheet("Evaluasi 1") {
+					ambilDariSheet("Evaluasi 2")
 				}
 			}
+
 			excelFile.Close()
 		}
 
