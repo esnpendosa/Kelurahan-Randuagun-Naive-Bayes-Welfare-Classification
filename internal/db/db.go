@@ -136,12 +136,18 @@ func AmbilDataLatih(db *sql.DB) ([]DataLatih, error) {
 }
 
 // AmbilDataLatihSplit mengambil data training dari tabel warga berdasarkan split (1 atau 2)
+// Hanya mengambil warga yang punya label_kelas valid DAN data indikator lengkap
 func AmbilDataLatihSplit(db *sql.DB, split int) ([]DataLatih, error) {
 	kolomLatih := "data_latih"
 	if split == 2 {
 		kolomLatih = "data_latih_2"
 	}
-	query := fmt.Sprintf("SELECT id, nama_lengkap, label_kelas FROM warga WHERE %s = 1", kolomLatih)
+	query := fmt.Sprintf(`
+		SELECT DISTINCT w.id, w.nama_lengkap, w.label_kelas 
+		FROM warga w
+		INNER JOIN data_indikator di ON di.warga_id = w.id
+		WHERE w.%s = 1 AND w.label_kelas != '' AND w.label_kelas IS NOT NULL
+	`, kolomLatih)
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -197,12 +203,19 @@ func AmbilDataUji(db *sql.DB) ([]DataLatih, error) {
 }
 
 // AmbilDataUjiSplit mengambil data uji berdasarkan split (1 atau 2)
+// Hanya mengambil warga yang punya label_kelas DAN minimal 1 indikator terisi
 func AmbilDataUjiSplit(db *sql.DB, split int) ([]DataLatih, error) {
 	kolomLatih := "data_latih"
 	if split == 2 {
 		kolomLatih = "data_latih_2"
 	}
-	query := fmt.Sprintf("SELECT id, nama_lengkap, label_kelas FROM warga WHERE %s = 0 AND label_kelas != ''", kolomLatih)
+	// Filter: hanya warga dengan label_kelas valid dan punya data indikator
+	query := fmt.Sprintf(`
+		SELECT DISTINCT w.id, w.nama_lengkap, w.label_kelas 
+		FROM warga w
+		INNER JOIN data_indikator di ON di.warga_id = w.id
+		WHERE w.%s = 0 AND w.label_kelas != '' AND w.label_kelas IS NOT NULL
+	`, kolomLatih)
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err

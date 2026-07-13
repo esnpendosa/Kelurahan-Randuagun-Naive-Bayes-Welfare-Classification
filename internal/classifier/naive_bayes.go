@@ -219,16 +219,18 @@ func AmbilSignificand(raw float64) float64 {
 	return significand
 }
 
-// AmbilKelasTerbaik mencari kelas dengan probabilitas tertinggi berdasarkan nilai significand (angka sebelum E) sesuai format Excel skripsi
+// AmbilKelasTerbaik mencari kelas dengan probabilitas posterior tertinggi
+// Menggunakan nilai float64 asli untuk perbandingan yang akurat
+// Contoh: 1.08E-22 > 8.99E-25 (benar secara matematika)
 func (nb *KlasifikasiNaiveBayes) AmbilKelasTerbaik(peluang map[KelasKesejahteraan]float64) KelasKesejahteraan {
-	var kelasTerbaik KelasKesejahteraan = 1 // default
-	var peluangMaks float64 = -1.0          // Mulai dari -1.0 agar kelas dengan peluang 0 bisa terpilih jika semuanya 0
+	var kelasTerbaik KelasKesejahteraan = 1 // default kelas 1
+	var peluangMaks float64 = -1.0
 	for _, c := range nb.SemuaKelas {
-		p := AmbilSignificand(peluang[c])
+		p := peluang[c] // Gunakan nilai asli float64, bukan significand
 		if p > peluangMaks {
 			peluangMaks = p
 			kelasTerbaik = c
 		}
 	}
-	return kelasTerbaik // Kembalikan kelas yang paling mungkin (hasil argmax)
+	return kelasTerbaik
 }

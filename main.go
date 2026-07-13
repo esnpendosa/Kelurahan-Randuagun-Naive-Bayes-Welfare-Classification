@@ -663,18 +663,31 @@ func main() {
 			namaKelas = classifier.DaftarNamaKelas[kelasTerbaik]
 		}
 
-		// Hitung persentase: normalisasi menggunakan nilai probabilitas raw asli (Standard Math)
-		var sumRaw float64
+		// Hitung persentase dengan normalisasi relatif terhadap nilai terbesar
+		// Menghindari masalah floating-point underflow pada nilai probabilitas sangat kecil
+		var maxVal float64
 		for _, k := range modelNB.SemuaKelas {
-			sumRaw += petaPeluang[k]
+			if petaPeluang[k] > maxVal {
+				maxVal = petaPeluang[k]
+			}
+		}
+
+		// Normalisasi: bagi tiap nilai dengan maksimum, lalu hitung proporsi
+		var sumNorm float64
+		normVals := make(map[classifier.KelasKesejahteraan]float64)
+		for _, k := range modelNB.SemuaKelas {
+			if maxVal > 0 {
+				normVals[k] = petaPeluang[k] / maxVal // nilai relatif terhadap maksimum
+			}
+			sumNorm += normVals[k]
 		}
 
 		var daftarPeluang []map[string]interface{}
 		for _, k := range modelNB.SemuaKelas {
 			rawVal := petaPeluang[k]
 			pct := 0.0
-			if sumRaw > 0 {
-				pct = rawVal / sumRaw * 100
+			if sumNorm > 0 {
+				pct = normVals[k] / sumNorm * 100
 			}
 			daftarPeluang = append(daftarPeluang, map[string]interface{}{
 				"Label":   classifier.DaftarNamaKelas[k],
