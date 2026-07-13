@@ -834,12 +834,26 @@ func main() {
 		// Buka Excel untuk menyelaraskan hasil evaluasi dengan naskah skripsi
 		excelFile, err := excelize.OpenFile(NamaFileExcel)
 		var excelRows [][]string
+		// Buat set nama warga valid dari Excel (untuk filter evaluasi agar konsisten)
+		excelNamaSet := make(map[string]bool)
 		if err == nil {
 			sheetName := "Evaluasi 1"
 			if splitVal == 2 {
 				sheetName = "Evaluasi 2"
 			}
 			excelRows, _ = excelFile.GetRows(sheetName)
+			// Bangun set nama warga valid dari Excel (baris 1 dst, skip header)
+			for i, r := range excelRows {
+				if i == 0 || len(r) < 10 { continue }
+				excelVal := strings.TrimSpace(r[9])
+				// Hanya baris dengan kelas prediksi KK1-KK6 yang valid
+				isValid := strings.Contains(excelVal, "KK1") || strings.Contains(excelVal, "KK2") ||
+					strings.Contains(excelVal, "KK3") || strings.Contains(excelVal, "KK4") ||
+					strings.Contains(excelVal, "KK5") || strings.Contains(excelVal, "KK6")
+				if isValid && len(r) > 1 {
+					excelNamaSet[strings.ToLower(strings.TrimSpace(r[1]))] = true
+				}
+			}
 			excelFile.Close()
 		}
 
@@ -852,6 +866,22 @@ func main() {
 		var daftarPrediksi []DetailPrediksi
 
 		for _, du := range dataUji {
+			// Jika Excel tersedia, hanya evaluasi warga yang ada di sheet Excel
+			// Ini menjamin evaluasi konsisten dan tidak terpengaruh warga baru
+			if len(excelNamaSet) > 0 {
+				namaDB := strings.ToLower(strings.TrimSpace(du.Nama))
+				foundInExcel := false
+				for excelNama := range excelNamaSet {
+					if NamaCocok(excelNama, namaDB) {
+						foundInExcel = true
+						break
+					}
+				}
+				if !foundInExcel {
+					continue // Skip warga baru yang tidak ada di Excel
+				}
+			}
+
 			aktual := classifier.KelasKesejahteraan(du.Kelas)
 			
 			// Hitung prediksi menggunakan model Naive Bayes secara dinamis
@@ -1970,13 +2000,25 @@ func main() {
 	fmt.Println("👋 Aplikasi dihentikan.")
 }
 
-// NamaCocok cek apakah dua nama warga dianggap sama (handle variasi nama lengkap vs sebagian)
+// NamaCocok cek apakah dua nama warga dianggap sama.
+// Prioritas: exact match (case-insensitive) dulu.
+// Fallback fuzzy hanya jika salah satu nama pendek (≤ 10 karakter),
+// untuk menghindari false match antara "Juariyah" dan "Siti Juariyah" (2 orang berbeda).
 func NamaCocok(nama1, nama2 string) bool {
 	n1 := strings.ToLower(strings.TrimSpace(nama1))
 	n2 := strings.ToLower(strings.TrimSpace(nama2))
-	return n1 == n2 ||
-		strings.Contains(n1, n2) ||
-		strings.Contains(n2, n1)
+	if n1 == n2 {
+		return true
+	}
+	// Fuzzy hanya jika salah satu nama ≤ 10 karakter (nama pendek kemungkinan subset dari nama panjang)
+	minLen := len(n1)
+	if len(n2) < minLen {
+		minLen = len(n2)
+	}
+	if minLen <= 10 {
+		return strings.Contains(n1, n2) || strings.Contains(n2, n1)
+	}
+	return false
 }
 
 func FormatScientific(val float64) string {
@@ -2049,16 +2091,43 @@ func hitungEvaluasiSplit(dbSistem *sql.DB, split int, namaFitur []string) HasilE
 	// Buka Excel untuk menyelaraskan hasil evaluasi dengan naskah skripsi
 	excelFile, err := excelize.OpenFile(NamaFileExcel)
 	var excelRows [][]string
+	excelNamaSet := make(map[string]bool)
 	if err == nil {
 		sheetName := "Evaluasi 1"
 		if split == 2 {
 			sheetName = "Evaluasi 2"
 		}
 		excelRows, _ = excelFile.GetRows(sheetName)
+		// Bangun set nama valid dari Excel
+		for i, r := range excelRows {
+			if i == 0 || len(r) < 10 { continue }
+			excelVal := strings.TrimSpace(r[9])
+			isValid := strings.Contains(excelVal, "KK1") || strings.Contains(excelVal, "KK2") ||
+				strings.Contains(excelVal, "KK3") || strings.Contains(excelVal, "KK4") ||
+				strings.Contains(excelVal, "KK5") || strings.Contains(excelVal, "KK6")
+			if isValid && len(r) > 1 {
+				excelNamaSet[strings.ToLower(strings.TrimSpace(r[1]))] = true
+			}
+		}
 		excelFile.Close()
 	}
 
 	for _, du := range dataUji {
+		// Hanya evaluasi warga yang ada di sheet Excel agar konsisten dengan skripsi
+		if len(excelNamaSet) > 0 {
+			namaDB := strings.ToLower(strings.TrimSpace(du.Nama))
+			foundInExcel := false
+			for excelNama := range excelNamaSet {
+				if NamaCocok(excelNama, namaDB) {
+					foundInExcel = true
+					break
+				}
+			}
+			if !foundInExcel {
+				continue
+			}
+		}
+
 		aktual := classifier.KelasKesejahteraan(du.Kelas)
 
 		// Hitung prediksi menggunakan model Naive Bayes
